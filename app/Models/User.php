@@ -17,6 +17,12 @@ class User extends Authenticatable
 
     public const ROLE_EXECUTIVE = 'executive';
 
+    public const ROLE_BANK = 'bank';
+
+    public const ACCOUNT_TYPE_SAVINGS = 'Savings';
+
+    public const ACCOUNT_TYPE_CURRENT = 'Current';
+
     protected $fillable = [
         'name',
         'username',
@@ -28,6 +34,9 @@ class User extends Authenticatable
         'is_active',
         'must_change_password',
         'balance',
+        'account_no',
+        'account_type',
+        'branch_name',
     ];
 
     protected $hidden = [
@@ -66,16 +75,40 @@ class User extends Authenticatable
         return $this->role === self::ROLE_EXECUTIVE;
     }
 
+    public function isBank(): bool
+    {
+        return $this->role === self::ROLE_BANK;
+    }
+
     public function dashboardRoute(): string
     {
-        return $this->isAdmin()
-            ? route('admin.dashboard')
-            : route('executive.dashboard');
+        if ($this->isAdmin()) {
+            return route('admin.dashboard');
+        }
+
+        if ($this->isBank()) {
+            return route('bank.dashboard');
+        }
+
+        return route('executive.dashboard');
+    }
+
+    public static function accountTypeOptions(): array
+    {
+        return [
+            self::ACCOUNT_TYPE_SAVINGS => self::ACCOUNT_TYPE_SAVINGS,
+            self::ACCOUNT_TYPE_CURRENT => self::ACCOUNT_TYPE_CURRENT,
+        ];
     }
 
     public function scopeExecutives(Builder $query): Builder
     {
         return $query->where('role', self::ROLE_EXECUTIVE);
+    }
+
+    public function scopeBanks(Builder $query): Builder
+    {
+        return $query->where('role', self::ROLE_BANK);
     }
 
     public function scopeActive(Builder $query): Builder

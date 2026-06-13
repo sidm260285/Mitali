@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AccountHead;
 use App\Models\CashTransaction;
 use App\Models\User;
+use App\Support\MoneyHelper;
 use Database\Seeders\SystemAccountHeadSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -26,6 +27,14 @@ class CashFlowTest extends TestCase
         $this->admin = User::factory()->admin()->create(['balance' => 0]);
         $this->creditHead = AccountHead::factory()->credit()->create(['name' => 'Donations']);
         $this->debitHead = AccountHead::factory()->debit()->create(['name' => 'Office Expense']);
+    }
+
+    public function test_admin_can_view_transfer_to_executive_page(): void
+    {
+        $this->actingAs($this->admin)
+            ->get(route('admin.cash-flow.transfer-to-executive.create'))
+            ->assertOk()
+            ->assertSee('Transfer to Executive');
     }
 
     public function test_admin_can_record_inflow_and_updates_balance(): void
@@ -136,6 +145,138 @@ class CashFlowTest extends TestCase
                 'transaction_date' => now()->toDateString(),
             ])
             ->assertSessionHasErrors('executive_id');
+    }
+
+    public function test_executive_transfer_detail_hides_other_users_linked_balance(): void
+    {
+        $executive = User::factory()->executive()->create(['balance' => 0]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.cash-flow.inflow.store'), [
+                'account_head_id' => $this->creditHead->id,
+                'amount' => '10000.00',
+                'transaction_date' => now()->toDateString(),
+            ]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.cash-flow.transfer-to-executive.store'), [
+                'executive_id' => $executive->id,
+                'amount' => '10000.00',
+                'transaction_date' => now()->toDateString(),
+            ]);
+
+        $executiveTransaction = CashTransaction::query()
+            ->where('user_id', $executive->id)
+            ->whereNotNull('transfer_group_id')
+            ->firstOrFail();
+
+        $adminTransaction = CashTransaction::query()
+            ->where('user_id', $this->admin->id)
+            ->where('transfer_group_id', $executiveTransaction->transfer_group_id)
+            ->firstOrFail();
+
+        $response = $this->actingAs($executive)
+            ->getJson(route('executive.cash-flow.transactions.show', $executiveTransaction))
+            ->assertOk()
+            ->assertJsonPath('transaction.id', $executiveTransaction->id)
+            ->assertJsonCount(2, 'linked');
+
+        $linked = collect($response->json('linked'))->keyBy('id');
+
+        $this->assertSame(
+            MoneyHelper::format($executiveTransaction->current_balance),
+            $linked[$executiveTransaction->id]['current_balance'],
+        );
+        $this->assertNull($linked[$adminTransaction->id]['current_balance']);
+    }
+
+    public function test_admin_transfer_detail_shows_all_linked_balances(): void
+    {
+        $executive = User::factory()->executive()->create(['balance' => 0]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.cash-flow.inflow.store'), [
+                'account_head_id' => $this->creditHead->id,
+                'amount' => '10000.00',
+                'transaction_date' => now()->toDateString(),
+            ]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.cash-flow.transfer-to-executive.store'), [
+                'executive_id' => $executive->id,
+                'amount' => '10000.00',
+                'transaction_date' => now()->toDateString(),
+            ]);
+
+        $adminTransaction = CashTransaction::query()
+            ->where('user_id', $this->admin->id)
+            ->whereNotNull('transfer_group_id')
+            ->firstOrFail();
+
+        $executiveTransaction = CashTransaction::query()
+            ->where('user_id', $executive->id)
+            ->where('transfer_group_id', $adminTransaction->transfer_group_id)
+            ->firstOrFail();
+
+        $response = $this->actingAs($this->admin)
+            ->getJson(route('admin.cash-flow.transactions.show', $adminTransaction))
+            ->assertOk()
+            ->assertJsonCount(2, 'linked');
+
+        $linked = collect($response->json('linked'))->keyBy('id');
+
+        $this->assertSame(
+            MoneyHelper::format($adminTransaction->current_balance),
+            $linked[$adminTransaction->id]['current_balance'],
+        );
+        $this->assertSame(
+            MoneyHelper::format($executiveTransaction->current_balance),
+            $linked[$executiveTransaction->id]['current_balance'],
+        );
+    }
+
+    public function test_executive_peer_transfer_detail_hides_other_executive_linked_balance(): void
+    {
+        $sender = User::factory()->executive()->create(['balance' => 0]);
+        $receiver = User::factory()->executive()->create(['balance' => 0]);
+
+        CashTransaction::create([
+            'user_id' => $sender->id,
+            'account_head_id' => $this->creditHead->id,
+            'type' => CashTransaction::TYPE_CREDIT,
+            'amount' => 500,
+            'transaction_date' => now()->toDateString(),
+        ]);
+
+        $this->actingAs($sender)
+            ->post(route('executive.cash-flow.transfer-to-executive.store'), [
+                'executive_id' => $receiver->id,
+                'amount' => '200.00',
+                'transaction_date' => now()->toDateString(),
+            ]);
+
+        $senderTransaction = CashTransaction::query()
+            ->where('user_id', $sender->id)
+            ->whereNotNull('transfer_group_id')
+            ->firstOrFail();
+
+        $receiverTransaction = CashTransaction::query()
+            ->where('user_id', $receiver->id)
+            ->where('transfer_group_id', $senderTransaction->transfer_group_id)
+            ->firstOrFail();
+
+        $response = $this->actingAs($receiver)
+            ->getJson(route('executive.cash-flow.transactions.show', $receiverTransaction))
+            ->assertOk()
+            ->assertJsonCount(2, 'linked');
+
+        $linked = collect($response->json('linked'))->keyBy('id');
+
+        $this->assertSame(
+            MoneyHelper::format($receiverTransaction->current_balance),
+            $linked[$receiverTransaction->id]['current_balance'],
+        );
+        $this->assertNull($linked[$senderTransaction->id]['current_balance']);
     }
 
     public function test_show_transaction_list_and_detail_json(): void

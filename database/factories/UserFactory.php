@@ -46,6 +46,25 @@ class UserFactory extends Factory
         ]);
     }
 
+    public function bank(): static
+    {
+        return $this->state(function (array $attributes) {
+            $suffix = fake()->unique()->numerify('#####');
+            $accountNo = fake()->numerify('#############').$suffix;
+
+            return [
+                'role' => User::ROLE_BANK,
+                'name' => fake()->company(),
+                'username' => $suffix,
+                'account_no' => $accountNo,
+                'account_type' => fake()->randomElement([User::ACCOUNT_TYPE_SAVINGS, User::ACCOUNT_TYPE_CURRENT]),
+                'branch_name' => fake()->city().' Branch',
+                'phone' => null,
+                'email' => null,
+            ];
+        });
+    }
+
     public function inactive(): static
     {
         return $this->state(fn (array $attributes) => [

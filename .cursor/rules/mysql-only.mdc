@@ -1,0 +1,34 @@
+---
+description: Database is MySQL only — never use or assume SQLite
+alwaysApply: true
+---
+
+# MySQL only
+
+This project uses **MySQL** for local development, production, and tests. Do not use SQLite.
+
+## Configuration
+
+- Default connection: `mysql` (see `config/database.php`, `.env.example`)
+- Tests: `phpunit.xml` uses database `mitali_testing` on the same MySQL host/port as `.env`
+- There is no `sqlite` connection in this app
+
+## Migrations and SQL
+
+- Write migrations and raw SQL for **MySQL** only
+- Do not add `if ($driver === 'sqlite')` branches or SQLite-specific trigger syntax
+- MySQL triggers cannot `UPDATE` the same table inside an `AFTER INSERT` trigger on that table; use `BEFORE INSERT` for row fields like `current_balance` when needed
+
+## Before running tests
+
+Create the test database once:
+
+```bash
+mysql -h 127.0.0.1 -P 8889 -u root -proot -e "CREATE DATABASE IF NOT EXISTS mitali_testing;"
+```
+
+Then run:
+
+```bash
+php artisan test
+```

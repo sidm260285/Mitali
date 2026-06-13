@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsureBank;
 use App\Http\Middleware\EnsureExecutive;
 use App\Http\Middleware\EnsurePasswordChanged;
 use Illuminate\Foundation\Application;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => EnsureAdmin::class,
+            'bank' => EnsureBank::class,
             'executive' => EnsureExecutive::class,
             'password.changed' => EnsurePasswordChanged::class,
         ]);

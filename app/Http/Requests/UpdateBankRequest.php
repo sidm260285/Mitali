@@ -6,7 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class UpdateExecutiveRequest extends FormRequest
+class UpdateBankRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -15,7 +15,7 @@ class UpdateExecutiveRequest extends FormRequest
 
     public function rules(): array
     {
-        $executive = $this->route('executive');
+        $bank = $this->route('bank');
 
         return [
             'name' => ['required', 'string', 'max:255'],
@@ -24,20 +24,18 @@ class UpdateExecutiveRequest extends FormRequest
                 'string',
                 'max:255',
                 'alpha_dash',
-                Rule::unique('users', 'username')->ignore($executive->id),
+                Rule::unique('users', 'username')->ignore($bank->id),
             ],
-            'phone' => [
-                'required',
-                'digits:10',
-                Rule::unique('users', 'phone')->where('role', User::ROLE_EXECUTIVE)->ignore($executive->id),
-            ],
+            'account_no' => ['required', 'string', 'min:8', 'max:200'],
+            'account_type' => ['required', 'string', Rule::in(array_keys(User::accountTypeOptions()))],
+            'branch_name' => ['required', 'string', 'max:200'],
+            'phone' => ['nullable', 'digits:10', Rule::unique('users', 'phone')->where('role', User::ROLE_BANK)->ignore($bank->id)],
             'email' => [
                 'nullable',
                 'email',
                 'max:255',
-                Rule::unique('users', 'email')->where('role', User::ROLE_EXECUTIVE)->ignore($executive->id),
+                Rule::unique('users', 'email')->where('role', User::ROLE_BANK)->ignore($bank->id),
             ],
-            'address' => ['nullable', 'string', 'max:1000'],
         ];
     }
 }

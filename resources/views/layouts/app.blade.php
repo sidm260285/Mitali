@@ -305,6 +305,10 @@
                                    href="{{ route('admin.executives.index') }}">Executive</a>
                             </li>
                             <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('admin.banks.*') ? 'active' : '' }}"
+                                   href="{{ route('admin.banks.index') }}">Bank</a>
+                            </li>
+                            <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('admin.sessions.*') ? 'active' : '' }}"
                                    href="{{ route('admin.sessions.index') }}">Session Master</a>
                             </li>
@@ -318,11 +322,11 @@
                             </li>
                             @include('partials.cash-flow-nav')
                         @else
-                            @include('partials.cash-flow-nav')
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('executive.dashboard') ? 'active' : '' }}"
                                    href="{{ route('executive.dashboard') }}">Dashboard</a>
                             </li>
+                            @include('partials.cash-flow-nav')
                         @endif
                     </ul>
 

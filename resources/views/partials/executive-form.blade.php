@@ -1,20 +1,20 @@
 <div class="row g-3">
     <div class="col-md-6">
-        <label for="name" class="form-label">Name</label>
+        <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
         <input type="text" name="name" id="name"
                class="form-control @error('name') is-invalid @enderror"
                value="{{ old('name', $executive?->name) }}" required>
     </div>
 
     <div class="col-md-6">
-        <label for="username" class="form-label">Username</label>
+        <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
         <input type="text" name="username" id="username"
                class="form-control @error('username') is-invalid @enderror"
                value="{{ old('username', $executive?->username) }}" required>
     </div>
 
     <div class="col-md-6">
-        <label for="phone" class="form-label">Phone</label>
+        <label for="phone" class="form-label">Phone <span class="text-danger">*</span></label>
         <input type="text" name="phone" id="phone" maxlength="10"
                class="form-control @error('phone') is-invalid @enderror"
                value="{{ old('phone', $executive?->phone) }}" required>
@@ -35,7 +35,7 @@
 
     @if(is_null($executive))
         <div class="col-md-6">
-            <label for="password" class="form-label">Password</label>
+            <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
             <input type="text" name="password" id="password"
                    class="form-control @error('password') is-invalid @enderror"
                    value="{{ old('password', $defaultPassword) }}" required>

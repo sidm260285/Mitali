@@ -88,10 +88,12 @@
                     if (data.linked.length > 1) {
                         linkedHtml = '<hr><h6 class="mb-3">Linked Transfer Entries</h6><ul class="list-group list-group-flush">';
                         data.linked.forEach(function (row) {
+                            const balanceSuffix = row.current_balance
+                                ? ' (Balance: ' + row.current_balance + ')'
+                                : '';
                             linkedHtml += '<li class="list-group-item px-0">' +
                                 '<strong>#' + row.id + '</strong> — ' + row.user + ' — ' + row.type +
-                                ' — ' + row.account_head + ' — ' + row.amount +
-                                ' (Balance: ' + row.current_balance + ')</li>';
+                                ' — ' + row.account_head + ' — ' + row.amount + balanceSuffix + '</li>';
                         });
                         linkedHtml += '</ul>';
                     }

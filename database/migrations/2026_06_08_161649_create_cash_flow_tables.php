@@ -56,58 +56,41 @@ return new class extends Migration
 
     private function createBalanceTrigger(): void
     {
-        $driver = Schema::getConnection()->getDriverName();
+        DB::unprepared('DROP TRIGGER IF EXISTS cash_transactions_before_insert');
+        DB::unprepared('DROP TRIGGER IF EXISTS cash_transactions_after_insert');
+        DB::unprepared(<<<'SQL'
+            CREATE TRIGGER cash_transactions_before_insert
+            BEFORE INSERT ON cash_transactions
+            FOR EACH ROW
+            BEGIN
+                DECLARE user_balance DECIMAL(15,2);
 
-        if ($driver === 'mysql') {
-            DB::unprepared('DROP TRIGGER IF EXISTS cash_transactions_after_insert');
-            DB::unprepared(<<<'SQL'
-                CREATE TRIGGER cash_transactions_after_insert
-                AFTER INSERT ON cash_transactions
-                FOR EACH ROW
-                BEGIN
-                    IF NEW.type = 'credit' THEN
-                        UPDATE users SET balance = balance + NEW.amount WHERE id = NEW.user_id;
-                    ELSE
-                        UPDATE users SET balance = balance - NEW.amount WHERE id = NEW.user_id;
-                    END IF;
+                SELECT balance INTO user_balance FROM users WHERE id = NEW.user_id;
 
-                    UPDATE cash_transactions
-                    SET current_balance = (SELECT balance FROM users WHERE id = NEW.user_id)
-                    WHERE id = NEW.id;
-                END
-            SQL);
-
-            return;
-        }
-
-        if ($driver === 'sqlite') {
-            DB::unprepared('DROP TRIGGER IF EXISTS cash_transactions_after_insert');
-            DB::unprepared(<<<'SQL'
-                CREATE TRIGGER cash_transactions_after_insert
-                AFTER INSERT ON cash_transactions
-                FOR EACH ROW
-                BEGIN
-                    UPDATE users
-                    SET balance = CASE
-                        WHEN NEW.type = 'credit' THEN balance + NEW.amount
-                        ELSE balance - NEW.amount
-                    END
-                    WHERE id = NEW.user_id;
-
-                    UPDATE cash_transactions
-                    SET current_balance = (SELECT balance FROM users WHERE id = NEW.user_id)
-                    WHERE id = NEW.id;
-                END
-            SQL);
-        }
+                IF NEW.type = 'credit' THEN
+                    SET NEW.current_balance = user_balance + NEW.amount;
+                ELSE
+                    SET NEW.current_balance = user_balance - NEW.amount;
+                END IF;
+            END
+        SQL);
+        DB::unprepared(<<<'SQL'
+            CREATE TRIGGER cash_transactions_after_insert
+            AFTER INSERT ON cash_transactions
+            FOR EACH ROW
+            BEGIN
+                IF NEW.type = 'credit' THEN
+                    UPDATE users SET balance = balance + NEW.amount WHERE id = NEW.user_id;
+                ELSE
+                    UPDATE users SET balance = balance - NEW.amount WHERE id = NEW.user_id;
+                END IF;
+            END
+        SQL);
     }
 
     private function dropBalanceTrigger(): void
     {
-        $driver = Schema::getConnection()->getDriverName();
-
-        if (in_array($driver, ['mysql', 'sqlite'], true)) {
-            DB::unprepared('DROP TRIGGER IF EXISTS cash_transactions_after_insert');
-        }
+        DB::unprepared('DROP TRIGGER IF EXISTS cash_transactions_before_insert');
+        DB::unprepared('DROP TRIGGER IF EXISTS cash_transactions_after_insert');
     }
 };

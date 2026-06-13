@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AccountHeadController;
+use App\Http\Controllers\Admin\BankController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\CashFlow\InflowController;
 use App\Http\Controllers\CashFlow\OutflowController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Admin\SessionController;
 use App\Http\Controllers\Admin\TrainerController;
 use App\Http\Controllers\Admin\TrainerDocumentController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Bank\DashboardController as BankDashboardController;
 use App\Http\Controllers\Executive\DashboardController as ExecutiveDashboardController;
 use App\Http\Controllers\Executive\PasswordController as ExecutivePasswordController;
 use App\Http\Controllers\Executive\ProfileController as ExecutiveProfileController;
@@ -45,6 +47,10 @@ Route::bind('executive', function (string $value) {
     return User::executives()->findOrFail($value);
 });
 
+Route::bind('bank', function (string $value) {
+    return User::banks()->findOrFail($value);
+});
+
 Route::prefix('admin')
     ->middleware(['auth', 'admin', 'password.changed'])
     ->name('admin.')
@@ -68,6 +74,17 @@ Route::prefix('admin')
         Route::patch('/executives/{executive}/activate', [ExecutiveController::class, 'activate'])->name('executives.activate');
         Route::post('/executives/{executive}/reset-password', [ExecutiveController::class, 'resetPassword'])->name('executives.reset-password');
         Route::get('/executives/{executive}/reset-password/reveal', [ExecutiveController::class, 'revealResetPassword'])->name('executives.reset-password.reveal');
+
+        Route::get('/banks', [BankController::class, 'index'])->name('banks.index');
+        Route::get('/banks/create', [BankController::class, 'create'])->name('banks.create');
+        Route::post('/banks', [BankController::class, 'store'])->name('banks.store');
+        Route::get('/banks/{bank}', [BankController::class, 'show'])->name('banks.show');
+        Route::get('/banks/{bank}/edit', [BankController::class, 'edit'])->name('banks.edit');
+        Route::put('/banks/{bank}', [BankController::class, 'update'])->name('banks.update');
+        Route::patch('/banks/{bank}/deactivate', [BankController::class, 'deactivate'])->name('banks.deactivate');
+        Route::patch('/banks/{bank}/activate', [BankController::class, 'activate'])->name('banks.activate');
+        Route::post('/banks/{bank}/reset-password', [BankController::class, 'resetPassword'])->name('banks.reset-password');
+        Route::get('/banks/{bank}/reset-password/reveal', [BankController::class, 'revealResetPassword'])->name('banks.reset-password.reveal');
 
         Route::get('/sessions', [SessionController::class, 'index'])->name('sessions.index');
         Route::get('/sessions/create', [SessionController::class, 'create'])->name('sessions.create');
@@ -103,10 +120,12 @@ Route::prefix('admin')
             Route::get('/outflow', [OutflowController::class, 'create'])->name('outflow.create');
             Route::post('/outflow', [OutflowController::class, 'store'])->name('outflow.store');
             Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
-            Route::get('/transactions/{cash_transaction}', [TransactionController::class, 'show'])->name('transactions.show');
             Route::get('/executive-transactions', [TransactionController::class, 'executiveIndex'])->name('executive-transactions.index');
             Route::get('/transfer-to-executive', [TransferController::class, 'createAdminTransfer'])->name('transfer-to-executive.create');
             Route::post('/transfer-to-executive', [TransferController::class, 'storeAdminTransfer'])->name('transfer-to-executive.store');
+            Route::get('/transactions/{cash_transaction}', [TransactionController::class, 'show'])
+                ->whereNumber('cash_transaction')
+                ->name('transactions.show');
         });
     });
 
@@ -129,10 +148,19 @@ Route::prefix('executive')
             Route::get('/outflow', [OutflowController::class, 'create'])->name('outflow.create');
             Route::post('/outflow', [OutflowController::class, 'store'])->name('outflow.store');
             Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
-            Route::get('/transactions/{cash_transaction}', [TransactionController::class, 'show'])->name('transactions.show');
             Route::get('/transfer-to-executive', [TransferController::class, 'createExecutiveTransfer'])->name('transfer-to-executive.create');
             Route::post('/transfer-to-executive', [TransferController::class, 'storeExecutiveTransfer'])->name('transfer-to-executive.store');
             Route::get('/transfer-to-admin', [TransferController::class, 'createExecutiveToAdmin'])->name('transfer-to-admin.create');
             Route::post('/transfer-to-admin', [TransferController::class, 'storeExecutiveToAdmin'])->name('transfer-to-admin.store');
+            Route::get('/transactions/{cash_transaction}', [TransactionController::class, 'show'])
+                ->whereNumber('cash_transaction')
+                ->name('transactions.show');
         });
+    });
+
+Route::prefix('bank')
+    ->middleware(['auth', 'bank', 'password.changed'])
+    ->name('bank.')
+    ->group(function () {
+        Route::get('/dashboard', [BankDashboardController::class, 'index'])->name('dashboard');
     });

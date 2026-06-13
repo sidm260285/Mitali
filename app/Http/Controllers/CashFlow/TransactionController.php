@@ -72,8 +72,17 @@ class TransactionController extends Controller
                 'type' => $row->typeLabel(),
                 'account_head' => $row->accountHead->name,
                 'amount' => MoneyHelper::format($row->amount),
-                'current_balance' => MoneyHelper::format($row->current_balance),
+                'current_balance' => $this->visibleLinkedBalance($user, $row),
             ])->values(),
         ]);
+    }
+
+    private function visibleLinkedBalance(User $viewer, CashTransaction $row): ?string
+    {
+        if ($viewer->isAdmin() || $row->user_id === $viewer->id) {
+            return MoneyHelper::format($row->current_balance);
+        }
+
+        return null;
     }
 }
