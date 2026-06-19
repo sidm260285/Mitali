@@ -11,6 +11,41 @@ use Illuminate\Validation\ValidationException;
 
 class CashTransactionService
 {
+    public function recordBankInflow(User $bank, int $accountHeadId, float $amount, string $transactionDate, string $transactionId, ?string $narration, int $entryBy): CashTransaction
+    {
+        $head = $this->resolveUserHead($accountHeadId, AccountHead::TYPE_CREDIT);
+
+        return $this->insertSingle(
+            user: $bank,
+            head: $head,
+            type: CashTransaction::TYPE_CREDIT,
+            mode: CashTransaction::MODE_BANK,
+            amount: $amount,
+            transactionDate: $transactionDate,
+            narration: $narration,
+            transactionId: $transactionId,
+            entryBy: $entryBy,
+        );
+    }
+
+    public function recordBankOutflow(User $bank, int $accountHeadId, float $amount, string $transactionDate, string $transactionId, ?string $narration, int $entryBy): CashTransaction
+    {
+        $head = $this->resolveUserHead($accountHeadId, AccountHead::TYPE_DEBIT);
+        $this->assertSufficientBalance($bank, $amount);
+
+        return $this->insertSingle(
+            user: $bank,
+            head: $head,
+            type: CashTransaction::TYPE_DEBIT,
+            mode: CashTransaction::MODE_BANK,
+            amount: $amount,
+            transactionDate: $transactionDate,
+            narration: $narration,
+            transactionId: $transactionId,
+            entryBy: $entryBy,
+        );
+    }
+
     public function recordInflow(User $user, int $accountHeadId, float $amount, string $transactionDate, ?string $narration): CashTransaction
     {
         $head = $this->resolveUserHead($accountHeadId, AccountHead::TYPE_CREDIT);
@@ -19,6 +54,7 @@ class CashTransactionService
             user: $user,
             head: $head,
             type: CashTransaction::TYPE_CREDIT,
+            mode: CashTransaction::MODE_CASH,
             amount: $amount,
             transactionDate: $transactionDate,
             narration: $narration,
@@ -34,6 +70,7 @@ class CashTransactionService
             user: $user,
             head: $head,
             type: CashTransaction::TYPE_DEBIT,
+            mode: CashTransaction::MODE_CASH,
             amount: $amount,
             transactionDate: $transactionDate,
             narration: $narration,
@@ -50,6 +87,7 @@ class CashTransactionService
             debitHead: AccountHead::findSystem(AccountHead::SYSTEM_ADMIN_TO_EXECUTIVE),
             creditUser: $executive,
             creditHead: AccountHead::findSystem(AccountHead::SYSTEM_RECEIVE_FROM_ADMIN),
+            mode: CashTransaction::MODE_CASH,
             amount: $amount,
             transactionDate: $transactionDate,
             narration: $narration,
@@ -76,6 +114,7 @@ class CashTransactionService
             debitHead: $head,
             creditUser: $receiver,
             creditHead: $head,
+            mode: CashTransaction::MODE_CASH,
             amount: $amount,
             transactionDate: $transactionDate,
             narration: $narration,
@@ -99,6 +138,7 @@ class CashTransactionService
             debitHead: AccountHead::findSystem(AccountHead::SYSTEM_EXECUTIVE_TO_ADMIN),
             creditUser: $admin,
             creditHead: AccountHead::findSystem(AccountHead::SYSTEM_EXECUTIVE_TO_ADMIN),
+            mode: CashTransaction::MODE_CASH,
             amount: $amount,
             transactionDate: $transactionDate,
             narration: $narration,
@@ -109,18 +149,24 @@ class CashTransactionService
         User $user,
         AccountHead $head,
         string $type,
+        string $mode,
         float $amount,
         string $transactionDate,
         ?string $narration,
+        ?string $transactionId = null,
+        int $entryBy = 0,
     ): CashTransaction {
-        return DB::transaction(function () use ($user, $head, $type, $amount, $transactionDate, $narration) {
+        return DB::transaction(function () use ($user, $head, $type, $mode, $amount, $transactionDate, $narration, $transactionId, $entryBy) {
             $transaction = CashTransaction::create([
                 'user_id' => $user->id,
                 'account_head_id' => $head->id,
                 'type' => $type,
+                'mode' => $mode,
                 'amount' => $amount,
                 'transaction_date' => $transactionDate,
                 'narration' => $narration,
+                'transaction_id' => $transactionId,
+                'entry_by' => $entryBy,
             ]);
 
             return $transaction->fresh(['accountHead', 'user']);
@@ -132,17 +178,19 @@ class CashTransactionService
         AccountHead $debitHead,
         User $creditUser,
         AccountHead $creditHead,
+        string $mode,
         float $amount,
         string $transactionDate,
         ?string $narration,
     ): void {
-        DB::transaction(function () use ($debitUser, $debitHead, $creditUser, $creditHead, $amount, $transactionDate, $narration) {
+        DB::transaction(function () use ($debitUser, $debitHead, $creditUser, $creditHead, $mode, $amount, $transactionDate, $narration) {
             $groupId = (string) Str::uuid();
 
             CashTransaction::create([
                 'user_id' => $debitUser->id,
                 'account_head_id' => $debitHead->id,
                 'type' => CashTransaction::TYPE_DEBIT,
+                'mode' => $mode,
                 'amount' => $amount,
                 'transaction_date' => $transactionDate,
                 'narration' => $narration,
@@ -153,6 +201,7 @@ class CashTransactionService
                 'user_id' => $creditUser->id,
                 'account_head_id' => $creditHead->id,
                 'type' => CashTransaction::TYPE_CREDIT,
+                'mode' => $mode,
                 'amount' => $amount,
                 'transaction_date' => $transactionDate,
                 'narration' => $narration,

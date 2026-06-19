@@ -17,6 +17,10 @@ class CashTransaction extends Model
 
     public const TYPE_DEBIT = 'debit';
 
+    public const MODE_CASH = 'cash';
+
+    public const MODE_BANK = 'bank';
+
     protected $fillable = [
         'user_id',
         'account_head_id',
@@ -26,6 +30,9 @@ class CashTransaction extends Model
         'narration',
         'current_balance',
         'transfer_group_id',
+        'mode',
+        'transaction_id',
+        'entry_by',
     ];
 
     protected function casts(): array

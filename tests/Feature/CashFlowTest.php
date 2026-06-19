@@ -115,6 +115,7 @@ class CashFlowTest extends TestCase
             'user_id' => $executive->id,
             'account_head_id' => $this->creditHead->id,
             'type' => CashTransaction::TYPE_CREDIT,
+            'mode' => CashTransaction::MODE_CASH,
             'amount' => 300,
             'transaction_date' => now()->toDateString(),
         ]);
@@ -244,6 +245,7 @@ class CashFlowTest extends TestCase
             'user_id' => $sender->id,
             'account_head_id' => $this->creditHead->id,
             'type' => CashTransaction::TYPE_CREDIT,
+            'mode' => CashTransaction::MODE_CASH,
             'amount' => 500,
             'transaction_date' => now()->toDateString(),
         ]);
@@ -285,6 +287,7 @@ class CashFlowTest extends TestCase
             'user_id' => $this->admin->id,
             'account_head_id' => $this->creditHead->id,
             'type' => CashTransaction::TYPE_CREDIT,
+            'mode' => CashTransaction::MODE_CASH,
             'amount' => 250,
             'transaction_date' => now()->toDateString(),
             'narration' => 'Short preview narration for modal testing',
@@ -314,6 +317,7 @@ class CashFlowTest extends TestCase
             'user_id' => $executive->id,
             'account_head_id' => $this->creditHead->id,
             'type' => CashTransaction::TYPE_CREDIT,
+            'mode' => CashTransaction::MODE_CASH,
             'amount' => 99,
             'transaction_date' => now()->toDateString(),
         ]);
@@ -332,5 +336,145 @@ class CashFlowTest extends TestCase
             ->get(route('admin.executives.index'))
             ->assertOk()
             ->assertSee('₹1,234.50');
+    }
+
+    public function test_inflow_records_mode_as_cash(): void
+    {
+        $this->actingAs($this->admin)
+            ->post(route('admin.cash-flow.inflow.store'), [
+                'account_head_id' => $this->creditHead->id,
+                'amount' => '500.00',
+                'transaction_date' => now()->toDateString(),
+            ]);
+
+        $transaction = CashTransaction::first();
+        $this->assertSame(CashTransaction::MODE_CASH, $transaction->mode);
+        $this->assertNull($transaction->transaction_id);
+    }
+
+    public function test_outflow_records_mode_as_cash(): void
+    {
+        $this->actingAs($this->admin)
+            ->post(route('admin.cash-flow.inflow.store'), [
+                'account_head_id' => $this->creditHead->id,
+                'amount' => '500.00',
+                'transaction_date' => now()->toDateString(),
+            ]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.cash-flow.outflow.store'), [
+                'account_head_id' => $this->debitHead->id,
+                'amount' => '200.00',
+                'transaction_date' => now()->toDateString(),
+            ]);
+
+        $outflow = CashTransaction::where('type', CashTransaction::TYPE_DEBIT)->first();
+        $this->assertSame(CashTransaction::MODE_CASH, $outflow->mode);
+        $this->assertNull($outflow->transaction_id);
+    }
+
+    public function test_transfer_rows_record_mode_as_cash(): void
+    {
+        $executive = User::factory()->executive()->create(['balance' => 0]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.cash-flow.inflow.store'), [
+                'account_head_id' => $this->creditHead->id,
+                'amount' => '1000.00',
+                'transaction_date' => now()->toDateString(),
+            ]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.cash-flow.transfer-to-executive.store'), [
+                'executive_id' => $executive->id,
+                'amount' => '400.00',
+                'transaction_date' => now()->toDateString(),
+            ]);
+
+        $transferRows = CashTransaction::whereNotNull('transfer_group_id')->get();
+        foreach ($transferRows as $row) {
+            $this->assertSame(CashTransaction::MODE_CASH, $row->mode);
+            $this->assertNull($row->transaction_id);
+        }
+    }
+
+    public function test_transaction_id_must_be_unique_per_user(): void
+    {
+        $user = User::factory()->executive()->create(['balance' => 0]);
+
+        CashTransaction::create([
+            'user_id' => $user->id,
+            'account_head_id' => $this->creditHead->id,
+            'type' => CashTransaction::TYPE_CREDIT,
+            'mode' => CashTransaction::MODE_BANK,
+            'amount' => 100,
+            'transaction_date' => now()->toDateString(),
+            'transaction_id' => 'TXN-001',
+        ]);
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+
+        CashTransaction::create([
+            'user_id' => $user->id,
+            'account_head_id' => $this->creditHead->id,
+            'type' => CashTransaction::TYPE_CREDIT,
+            'mode' => CashTransaction::MODE_BANK,
+            'amount' => 200,
+            'transaction_date' => now()->toDateString(),
+            'transaction_id' => 'TXN-001',
+        ]);
+    }
+
+    public function test_same_transaction_id_allowed_for_different_users(): void
+    {
+        $userA = User::factory()->executive()->create(['balance' => 0]);
+        $userB = User::factory()->executive()->create(['balance' => 0]);
+
+        CashTransaction::create([
+            'user_id' => $userA->id,
+            'account_head_id' => $this->creditHead->id,
+            'type' => CashTransaction::TYPE_CREDIT,
+            'mode' => CashTransaction::MODE_BANK,
+            'amount' => 100,
+            'transaction_date' => now()->toDateString(),
+            'transaction_id' => 'TXN-001',
+        ]);
+
+        CashTransaction::create([
+            'user_id' => $userB->id,
+            'account_head_id' => $this->creditHead->id,
+            'type' => CashTransaction::TYPE_CREDIT,
+            'mode' => CashTransaction::MODE_BANK,
+            'amount' => 200,
+            'transaction_date' => now()->toDateString(),
+            'transaction_id' => 'TXN-001',
+        ]);
+
+        $this->assertEquals(2, CashTransaction::where('transaction_id', 'TXN-001')->count());
+    }
+
+    public function test_null_transaction_id_allowed_for_multiple_cash_rows(): void
+    {
+        CashTransaction::create([
+            'user_id' => $this->admin->id,
+            'account_head_id' => $this->creditHead->id,
+            'type' => CashTransaction::TYPE_CREDIT,
+            'mode' => CashTransaction::MODE_CASH,
+            'amount' => 100,
+            'transaction_date' => now()->toDateString(),
+            'transaction_id' => null,
+        ]);
+
+        CashTransaction::create([
+            'user_id' => $this->admin->id,
+            'account_head_id' => $this->creditHead->id,
+            'type' => CashTransaction::TYPE_CREDIT,
+            'mode' => CashTransaction::MODE_CASH,
+            'amount' => 200,
+            'transaction_date' => now()->toDateString(),
+            'transaction_id' => null,
+        ]);
+
+        $this->assertEquals(2, CashTransaction::where('user_id', $this->admin->id)->count());
     }
 }

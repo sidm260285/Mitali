@@ -3,6 +3,9 @@
 use App\Http\Controllers\Admin\AccountHeadController;
 use App\Http\Controllers\Admin\BankController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\BankFlow\BankFlowController;
+use App\Http\Controllers\BankFlow\InflowController as BankInflowController;
+use App\Http\Controllers\BankFlow\OutflowController as BankOutflowController;
 use App\Http\Controllers\CashFlow\InflowController;
 use App\Http\Controllers\CashFlow\OutflowController;
 use App\Http\Controllers\CashFlow\TransactionController;
@@ -127,6 +130,14 @@ Route::prefix('admin')
                 ->whereNumber('cash_transaction')
                 ->name('transactions.show');
         });
+
+        Route::prefix('bank-flow')->name('bank-flow.')->group(function () {
+            Route::get('/inflow', [BankInflowController::class, 'create'])->name('inflow.create');
+            Route::post('/inflow', [BankInflowController::class, 'store'])->name('inflow.store');
+            Route::get('/outflow', [BankOutflowController::class, 'create'])->name('outflow.create');
+            Route::post('/outflow', [BankOutflowController::class, 'store'])->name('outflow.store');
+            Route::get('/banks/{bank}/balance', [BankFlowController::class, 'bankBalance'])->name('bank-balance');
+        });
     });
 
 Route::prefix('executive')
@@ -155,6 +166,14 @@ Route::prefix('executive')
             Route::get('/transactions/{cash_transaction}', [TransactionController::class, 'show'])
                 ->whereNumber('cash_transaction')
                 ->name('transactions.show');
+        });
+
+        Route::prefix('bank-flow')->name('bank-flow.')->group(function () {
+            Route::get('/inflow', [BankInflowController::class, 'create'])->name('inflow.create');
+            Route::post('/inflow', [BankInflowController::class, 'store'])->name('inflow.store');
+            Route::get('/outflow', [BankOutflowController::class, 'create'])->name('outflow.create');
+            Route::post('/outflow', [BankOutflowController::class, 'store'])->name('outflow.store');
+            Route::get('/banks/{bank}/balance', [BankFlowController::class, 'bankBalance'])->name('bank-balance');
         });
     });
 

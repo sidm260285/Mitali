@@ -321,12 +321,14 @@
                                    href="{{ route('admin.account-heads.index') }}">Accounts Head</a>
                             </li>
                             @include('partials.cash-flow-nav')
+                            @include('partials.bank-flow-nav')
                         @else
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('executive.dashboard') ? 'active' : '' }}"
                                    href="{{ route('executive.dashboard') }}">Dashboard</a>
                             </li>
                             @include('partials.cash-flow-nav')
+                            @include('partials.bank-flow-nav')
                         @endif
                     </ul>
 
