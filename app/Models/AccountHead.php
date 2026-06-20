@@ -33,6 +33,12 @@ class AccountHead extends Model
 
     public const SYSTEM_BANK_TO_EXECUTIVE = 'bank to executive';
 
+    public const SYSTEM_DEPOSIT_BY_ADMIN = 'deposit by admin';
+
+    public const SYSTEM_DEPOSIT_BY_EXECUTIVE = 'deposit by executive';
+
+    public const SYSTEM_WITHDRAWN_FROM_BANK = 'withdrawn from bank';
+
     protected $fillable = [
         'name',
         'type',
@@ -86,6 +92,9 @@ class AccountHead extends Model
             self::SYSTEM_ADMIN_TO_BANK,
             self::SYSTEM_BANK_TO_ADMIN,
             self::SYSTEM_BANK_TO_EXECUTIVE,
+            self::SYSTEM_DEPOSIT_BY_ADMIN,
+            self::SYSTEM_DEPOSIT_BY_EXECUTIVE,
+            self::SYSTEM_WITHDRAWN_FROM_BANK,
         ];
     }
 

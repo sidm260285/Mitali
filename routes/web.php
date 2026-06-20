@@ -4,8 +4,10 @@ use App\Http\Controllers\Admin\AccountHeadController;
 use App\Http\Controllers\Admin\BankController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\BankFlow\BankFlowController;
+use App\Http\Controllers\BankFlow\BankToCashController;
 use App\Http\Controllers\BankFlow\InflowController as BankInflowController;
 use App\Http\Controllers\BankFlow\OutflowController as BankOutflowController;
+use App\Http\Controllers\CashFlow\CashToBankController;
 use App\Http\Controllers\CashFlow\InflowController;
 use App\Http\Controllers\CashFlow\OutflowController;
 use App\Http\Controllers\CashFlow\TransactionController;
@@ -122,6 +124,8 @@ Route::prefix('admin')
             Route::post('/inflow', [InflowController::class, 'store'])->name('inflow.store');
             Route::get('/outflow', [OutflowController::class, 'create'])->name('outflow.create');
             Route::post('/outflow', [OutflowController::class, 'store'])->name('outflow.store');
+            Route::get('/cash-to-bank', [CashToBankController::class, 'create'])->name('cash-to-bank.create');
+            Route::post('/cash-to-bank', [CashToBankController::class, 'store'])->name('cash-to-bank.store');
             Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
             Route::get('/executive-transactions', [TransactionController::class, 'executiveIndex'])->name('executive-transactions.index');
             Route::get('/transfer-to-executive', [TransferController::class, 'createAdminTransfer'])->name('transfer-to-executive.create');
@@ -136,6 +140,8 @@ Route::prefix('admin')
             Route::post('/inflow', [BankInflowController::class, 'store'])->name('inflow.store');
             Route::get('/outflow', [BankOutflowController::class, 'create'])->name('outflow.create');
             Route::post('/outflow', [BankOutflowController::class, 'store'])->name('outflow.store');
+            Route::get('/bank-to-cash', [BankToCashController::class, 'create'])->name('bank-to-cash.create');
+            Route::post('/bank-to-cash', [BankToCashController::class, 'store'])->name('bank-to-cash.store');
             Route::get('/banks/{bank}/balance', [BankFlowController::class, 'bankBalance'])->name('bank-balance');
         });
     });
@@ -158,6 +164,8 @@ Route::prefix('executive')
             Route::post('/inflow', [InflowController::class, 'store'])->name('inflow.store');
             Route::get('/outflow', [OutflowController::class, 'create'])->name('outflow.create');
             Route::post('/outflow', [OutflowController::class, 'store'])->name('outflow.store');
+            Route::get('/cash-to-bank', [CashToBankController::class, 'create'])->name('cash-to-bank.create');
+            Route::post('/cash-to-bank', [CashToBankController::class, 'store'])->name('cash-to-bank.store');
             Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
             Route::get('/transfer-to-executive', [TransferController::class, 'createExecutiveTransfer'])->name('transfer-to-executive.create');
             Route::post('/transfer-to-executive', [TransferController::class, 'storeExecutiveTransfer'])->name('transfer-to-executive.store');
@@ -173,6 +181,8 @@ Route::prefix('executive')
             Route::post('/inflow', [BankInflowController::class, 'store'])->name('inflow.store');
             Route::get('/outflow', [BankOutflowController::class, 'create'])->name('outflow.create');
             Route::post('/outflow', [BankOutflowController::class, 'store'])->name('outflow.store');
+            Route::get('/bank-to-cash', [BankToCashController::class, 'create'])->name('bank-to-cash.create');
+            Route::post('/bank-to-cash', [BankToCashController::class, 'store'])->name('bank-to-cash.store');
             Route::get('/banks/{bank}/balance', [BankFlowController::class, 'bankBalance'])->name('bank-balance');
         });
     });

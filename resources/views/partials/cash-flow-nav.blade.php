@@ -17,6 +17,10 @@
             <a class="dropdown-item {{ request()->routeIs($isAdmin ? 'admin.cash-flow.outflow.*' : 'executive.cash-flow.outflow.*') ? 'active' : '' }}"
                href="{{ route($isAdmin ? 'admin.cash-flow.outflow.create' : 'executive.cash-flow.outflow.create') }}">Outflow</a>
         </li>
+        <li>
+            <a class="dropdown-item {{ request()->routeIs($isAdmin ? 'admin.cash-flow.cash-to-bank.*' : 'executive.cash-flow.cash-to-bank.*') ? 'active' : '' }}"
+               href="{{ route($isAdmin ? 'admin.cash-flow.cash-to-bank.create' : 'executive.cash-flow.cash-to-bank.create') }}">Cash to Bank</a>
+        </li>
         @if($isAdmin)
             <li>
                 <a class="dropdown-item {{ request()->routeIs('admin.cash-flow.transfer-to-executive.*') ? 'active' : '' }}"

@@ -87,7 +87,8 @@ class CashTransactionService
             debitHead: AccountHead::findSystem(AccountHead::SYSTEM_ADMIN_TO_EXECUTIVE),
             creditUser: $executive,
             creditHead: AccountHead::findSystem(AccountHead::SYSTEM_RECEIVE_FROM_ADMIN),
-            mode: CashTransaction::MODE_CASH,
+            debitMode: CashTransaction::MODE_CASH,
+            creditMode: CashTransaction::MODE_CASH,
             amount: $amount,
             transactionDate: $transactionDate,
             narration: $narration,
@@ -114,10 +115,36 @@ class CashTransactionService
             debitHead: $head,
             creditUser: $receiver,
             creditHead: $head,
-            mode: CashTransaction::MODE_CASH,
+            debitMode: CashTransaction::MODE_CASH,
+            creditMode: CashTransaction::MODE_CASH,
             amount: $amount,
             transactionDate: $transactionDate,
             narration: $narration,
+        );
+    }
+
+    public function transferBankToCash(User $bank, User $doer, float $amount, string $transactionDate, string $transactionId, ?string $narration, int $entryBy): void
+    {
+        $this->assertSufficientBalance($bank, $amount);
+
+        $debitHead = $doer->isAdmin()
+            ? AccountHead::findSystem(AccountHead::SYSTEM_BANK_TO_ADMIN)
+            : AccountHead::findSystem(AccountHead::SYSTEM_BANK_TO_EXECUTIVE);
+
+        $creditHead = AccountHead::findSystem(AccountHead::SYSTEM_WITHDRAWN_FROM_BANK);
+
+        $this->insertPair(
+            debitUser: $bank,
+            debitHead: $debitHead,
+            creditUser: $doer,
+            creditHead: $creditHead,
+            debitMode: CashTransaction::MODE_BANK,
+            creditMode: CashTransaction::MODE_CASH,
+            amount: $amount,
+            transactionDate: $transactionDate,
+            narration: $narration,
+            debitEntryBy: $entryBy,
+            debitTransactionId: $transactionId,
         );
     }
 
@@ -138,10 +165,37 @@ class CashTransactionService
             debitHead: AccountHead::findSystem(AccountHead::SYSTEM_EXECUTIVE_TO_ADMIN),
             creditUser: $admin,
             creditHead: AccountHead::findSystem(AccountHead::SYSTEM_EXECUTIVE_TO_ADMIN),
-            mode: CashTransaction::MODE_CASH,
+            debitMode: CashTransaction::MODE_CASH,
+            creditMode: CashTransaction::MODE_CASH,
             amount: $amount,
             transactionDate: $transactionDate,
             narration: $narration,
+        );
+    }
+
+    public function transferCashToBank(User $doer, User $bank, float $amount, string $transactionDate, ?string $narration, int $entryBy): void
+    {
+        $this->assertSufficientBalance($doer, $amount);
+
+        $debitHead = $doer->isAdmin()
+            ? AccountHead::findSystem(AccountHead::SYSTEM_ADMIN_TO_BANK)
+            : AccountHead::findSystem(AccountHead::SYSTEM_EXECUTIVE_TO_BANK);
+
+        $creditHead = $doer->isAdmin()
+            ? AccountHead::findSystem(AccountHead::SYSTEM_DEPOSIT_BY_ADMIN)
+            : AccountHead::findSystem(AccountHead::SYSTEM_DEPOSIT_BY_EXECUTIVE);
+
+        $this->insertPair(
+            debitUser: $doer,
+            debitHead: $debitHead,
+            creditUser: $bank,
+            creditHead: $creditHead,
+            debitMode: CashTransaction::MODE_CASH,
+            creditMode: CashTransaction::MODE_BANK,
+            amount: $amount,
+            transactionDate: $transactionDate,
+            narration: $narration,
+            creditEntryBy: $entryBy,
         );
     }
 
@@ -178,34 +232,41 @@ class CashTransactionService
         AccountHead $debitHead,
         User $creditUser,
         AccountHead $creditHead,
-        string $mode,
+        string $debitMode,
+        string $creditMode,
         float $amount,
         string $transactionDate,
         ?string $narration,
+        int $debitEntryBy = 0,
+        int $creditEntryBy = 0,
+        ?string $debitTransactionId = null,
     ): void {
-        DB::transaction(function () use ($debitUser, $debitHead, $creditUser, $creditHead, $mode, $amount, $transactionDate, $narration) {
+        DB::transaction(function () use ($debitUser, $debitHead, $creditUser, $creditHead, $debitMode, $creditMode, $amount, $transactionDate, $narration, $debitEntryBy, $creditEntryBy, $debitTransactionId) {
             $groupId = (string) Str::uuid();
 
             CashTransaction::create([
                 'user_id' => $debitUser->id,
                 'account_head_id' => $debitHead->id,
                 'type' => CashTransaction::TYPE_DEBIT,
-                'mode' => $mode,
+                'mode' => $debitMode,
                 'amount' => $amount,
                 'transaction_date' => $transactionDate,
                 'narration' => $narration,
                 'transfer_group_id' => $groupId,
+                'entry_by' => $debitEntryBy,
+                'transaction_id' => $debitTransactionId,
             ]);
 
             CashTransaction::create([
                 'user_id' => $creditUser->id,
                 'account_head_id' => $creditHead->id,
                 'type' => CashTransaction::TYPE_CREDIT,
-                'mode' => $mode,
+                'mode' => $creditMode,
                 'amount' => $amount,
                 'transaction_date' => $transactionDate,
                 'narration' => $narration,
                 'transfer_group_id' => $groupId,
+                'entry_by' => $creditEntryBy,
             ]);
         });
     }
