@@ -76,12 +76,12 @@ class AdminSessionTest extends TestCase
                 [
                     'start_hour' => 8, 'start_minute' => 0, 'start_period' => 'AM',
                     'end_hour' => 9, 'end_minute' => 0, 'end_period' => 'AM',
-                    'buffer_time' => 10,
+                    'buffer_time' => 10, 'max_size' => 30,
                 ],
                 [
                     'start_hour' => 8, 'start_minute' => 30, 'start_period' => 'AM',
                     'end_hour' => 9, 'end_minute' => 40, 'end_period' => 'AM',
-                    'buffer_time' => 10,
+                    'buffer_time' => 10, 'max_size' => 30,
                 ],
             ],
         ]);
@@ -274,6 +274,7 @@ class AdminSessionTest extends TestCase
                     'end_minute' => 0,
                     'end_period' => 'AM',
                     'buffer_time' => $batch->buffer_time,
+                    'max_size' => $batch->max_size,
                 ];
             })->toArray();
         }

@@ -3,10 +3,15 @@
 use App\Http\Controllers\Admin\AccountHeadController;
 use App\Http\Controllers\Admin\BankController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admission\AdmissionController;
+use App\Http\Controllers\Admission\AdmissionDocumentController;
 use App\Http\Controllers\BankFlow\BankFlowController;
+use App\Http\Controllers\BankFlow\BankToBankController;
 use App\Http\Controllers\BankFlow\BankToCashController;
+use App\Http\Controllers\BankFlow\BankTransactionController;
 use App\Http\Controllers\BankFlow\InflowController as BankInflowController;
 use App\Http\Controllers\BankFlow\OutflowController as BankOutflowController;
+use App\Http\Controllers\SalaryPayment\SalaryPaymentController;
 use App\Http\Controllers\CashFlow\CashToBankController;
 use App\Http\Controllers\CashFlow\InflowController;
 use App\Http\Controllers\CashFlow\OutflowController;
@@ -142,7 +147,37 @@ Route::prefix('admin')
             Route::post('/outflow', [BankOutflowController::class, 'store'])->name('outflow.store');
             Route::get('/bank-to-cash', [BankToCashController::class, 'create'])->name('bank-to-cash.create');
             Route::post('/bank-to-cash', [BankToCashController::class, 'store'])->name('bank-to-cash.store');
+            Route::get('/bank-to-bank', [BankToBankController::class, 'create'])->name('bank-to-bank.create');
+            Route::post('/bank-to-bank', [BankToBankController::class, 'store'])->name('bank-to-bank.store');
+            Route::get('/transactions', [BankTransactionController::class, 'index'])->name('transactions.index');
+            Route::get('/transactions/{bankTransaction}', [BankTransactionController::class, 'show'])
+                ->whereNumber('bankTransaction')
+                ->name('transactions.show');
             Route::get('/banks/{bank}/balance', [BankFlowController::class, 'bankBalance'])->name('bank-balance');
+        });
+
+        Route::prefix('salary-payment')->name('salary-payment.')->group(function () {
+            Route::get('/executives', [SalaryPaymentController::class, 'executiveIndex'])->name('executives.index');
+            Route::get('/trainers', [SalaryPaymentController::class, 'trainerIndex'])->name('trainers.index');
+            Route::post('/', [SalaryPaymentController::class, 'store'])->name('store');
+        });
+
+        Route::prefix('admission')->name('admission.')->group(function () {
+            Route::get('/list', [AdmissionController::class, 'index'])->name('list');
+            Route::get('/current', [AdmissionController::class, 'createCurrent'])->name('current');
+            Route::get('/upcoming', [AdmissionController::class, 'createUpcoming'])->name('upcoming');
+            Route::post('/', [AdmissionController::class, 'store'])->name('store');
+            Route::get('/calculate-fee', [AdmissionController::class, 'calculateFee'])->name('calculate-fee');
+            Route::get('/session-data/{session}', [AdmissionController::class, 'sessionData'])->name('session-data');
+            Route::get('/{admission}', [AdmissionController::class, 'show'])->name('show');
+            Route::get('/{admission}/edit', [AdmissionController::class, 'edit'])->name('edit');
+            Route::put('/{admission}', [AdmissionController::class, 'update'])->name('update');
+            Route::patch('/{admission}/block', [AdmissionController::class, 'block'])->name('block');
+            Route::patch('/{admission}/unblock', [AdmissionController::class, 'unblock'])->name('unblock');
+            Route::get('/{admission}/documents', [AdmissionDocumentController::class, 'index'])->name('documents');
+            Route::post('/{admission}/documents', [AdmissionDocumentController::class, 'store'])->name('documents.store');
+            Route::get('/{admission}/documents/{document}', [AdmissionDocumentController::class, 'show'])->name('documents.show');
+            Route::delete('/{admission}/documents/{document}', [AdmissionDocumentController::class, 'destroy'])->name('documents.destroy');
         });
     });
 
@@ -184,6 +219,24 @@ Route::prefix('executive')
             Route::get('/bank-to-cash', [BankToCashController::class, 'create'])->name('bank-to-cash.create');
             Route::post('/bank-to-cash', [BankToCashController::class, 'store'])->name('bank-to-cash.store');
             Route::get('/banks/{bank}/balance', [BankFlowController::class, 'bankBalance'])->name('bank-balance');
+        });
+
+        Route::prefix('admission')->name('admission.')->group(function () {
+            Route::get('/list', [AdmissionController::class, 'index'])->name('list');
+            Route::get('/current', [AdmissionController::class, 'createCurrent'])->name('current');
+            Route::get('/upcoming', [AdmissionController::class, 'createUpcoming'])->name('upcoming');
+            Route::post('/', [AdmissionController::class, 'store'])->name('store');
+            Route::get('/calculate-fee', [AdmissionController::class, 'calculateFee'])->name('calculate-fee');
+            Route::get('/session-data/{session}', [AdmissionController::class, 'sessionData'])->name('session-data');
+            Route::get('/{admission}', [AdmissionController::class, 'show'])->name('show');
+            Route::get('/{admission}/edit', [AdmissionController::class, 'edit'])->name('edit');
+            Route::put('/{admission}', [AdmissionController::class, 'update'])->name('update');
+            Route::patch('/{admission}/block', [AdmissionController::class, 'block'])->name('block');
+            Route::patch('/{admission}/unblock', [AdmissionController::class, 'unblock'])->name('unblock');
+            Route::get('/{admission}/documents', [AdmissionDocumentController::class, 'index'])->name('documents');
+            Route::post('/{admission}/documents', [AdmissionDocumentController::class, 'store'])->name('documents.store');
+            Route::get('/{admission}/documents/{document}', [AdmissionDocumentController::class, 'show'])->name('documents.show');
+            Route::delete('/{admission}/documents/{document}', [AdmissionDocumentController::class, 'destroy'])->name('documents.destroy');
         });
     });
 

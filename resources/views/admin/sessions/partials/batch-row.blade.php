@@ -64,12 +64,19 @@
                 <input type="hidden" name="batches[{{ $index }}][end_hour]" value="{{ $batch['end_hour'] }}">
                 <input type="hidden" name="batches[{{ $index }}][end_minute]" value="{{ $batch['end_minute'] }}">
                 <input type="hidden" name="batches[{{ $index }}][end_period]" value="{{ $batch['end_period'] }}">
+                <input type="hidden" name="batches[{{ $index }}][max_size]" value="{{ $batch['max_size'] ?? 0 }}">
             @endif
         </div>
-        <div class="col-lg-2">
+        <div class="col-lg-1">
             <label class="form-label">Buffer (min)</label>
             <input type="number" name="batches[{{ $index }}][buffer_time]" class="form-control" min="0" max="60"
                    value="{{ $batch['buffer_time'] ?? 0 }}"
+                   {{ !empty($batch['frozen']) ? 'readonly' : 'required' }}>
+        </div>
+        <div class="col-lg-1">
+            <label class="form-label">Max Size</label>
+            <input type="number" name="batches[{{ $index }}][max_size]" class="form-control" min="0"
+                   value="{{ $batch['max_size'] ?? 0 }}"
                    {{ !empty($batch['frozen']) ? 'readonly' : 'required' }}>
         </div>
         <div class="col-12 text-end">

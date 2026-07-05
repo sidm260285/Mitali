@@ -22,6 +22,7 @@ class StoreExecutiveRequest extends FormRequest
             'phone' => ['required', 'digits:10', Rule::unique('users', 'phone')->where('role', User::ROLE_EXECUTIVE)],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')->where('role', User::ROLE_EXECUTIVE)],
             'address' => ['nullable', 'string', 'max:1000'],
+            'monthly_salary' => ['required', 'integer', 'min:0'],
             'password' => ['required', Password::defaults()],
         ];
     }

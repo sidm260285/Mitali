@@ -39,6 +39,7 @@ class AdminExecutiveTest extends TestCase
                 'phone' => '9876543210',
                 'email' => 'john@example.com',
                 'address' => 'Test address',
+                'monthly_salary' => 15000,
                 'password' => 'password123',
             ])
             ->assertRedirect(route('admin.executives.index'))
@@ -48,6 +49,7 @@ class AdminExecutiveTest extends TestCase
             'username' => 'johnexec',
             'role' => User::ROLE_EXECUTIVE,
             'is_active' => true,
+            'monthly_salary' => 15000,
         ]);
     }
 
@@ -134,6 +136,7 @@ class AdminExecutiveTest extends TestCase
                 'username' => 'anotherexec',
                 'phone' => '9000000001',
                 'email' => 'shared@example.com',
+                'monthly_salary' => 10000,
                 'password' => 'password123',
             ])
             ->assertSessionHasErrors(['phone', 'email']);
@@ -152,9 +155,52 @@ class AdminExecutiveTest extends TestCase
                 'username' => 'newexec',
                 'phone' => '9000000002',
                 'email' => 'shared@example.com',
+                'monthly_salary' => 12000,
                 'password' => 'password123',
             ])
             ->assertRedirect(route('admin.executives.index'))
             ->assertSessionHas('success');
+    }
+
+    public function test_monthly_salary_is_required_on_create(): void
+    {
+        $this->actingAs($this->admin)
+            ->post(route('admin.executives.store'), [
+                'name' => 'John Executive',
+                'username' => 'johnexec',
+                'phone' => '9876543210',
+                'password' => 'password123',
+            ])
+            ->assertSessionHasErrors('monthly_salary');
+    }
+
+    public function test_admin_can_update_executive_salary(): void
+    {
+        $executive = User::factory()->executive()->create(['monthly_salary' => 10000]);
+
+        $this->actingAs($this->admin)
+            ->put(route('admin.executives.update', $executive), [
+                'name' => $executive->name,
+                'username' => $executive->username,
+                'phone' => $executive->phone,
+                'monthly_salary' => 20000,
+            ])
+            ->assertRedirect(route('admin.executives.index'))
+            ->assertSessionHas('success');
+
+        $this->assertEquals(20000, $executive->fresh()->monthly_salary);
+    }
+
+    public function test_monthly_salary_is_required_on_update(): void
+    {
+        $executive = User::factory()->executive()->create(['monthly_salary' => 10000]);
+
+        $this->actingAs($this->admin)
+            ->put(route('admin.executives.update', $executive), [
+                'name' => $executive->name,
+                'username' => $executive->username,
+                'phone' => $executive->phone,
+            ])
+            ->assertSessionHasErrors('monthly_salary');
     }
 }

@@ -20,6 +20,7 @@ class SessionBatchFactory extends Factory
             'start_time' => '05:20:00',
             'end_time' => '06:00:00',
             'buffer_time' => 10,
+            'max_size' => 30,
             'admission_counter' => 0,
             'attendance_counter' => 0,
         ];

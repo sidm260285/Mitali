@@ -16,6 +16,9 @@
             @include('partials.profile-fields', ['user' => $executive])
             <hr>
             <dl class="row mb-0">
+                <dt class="col-sm-3">Monthly Salary</dt>
+                <dd class="col-sm-9">{{ number_format($executive->monthly_salary) }}</dd>
+
                 <dt class="col-sm-3">Status</dt>
                 <dd class="col-sm-9">
                     @if($executive->is_active)

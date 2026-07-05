@@ -66,6 +66,7 @@ class TransactionController extends Controller
                 'recorded_at' => $cashTransaction->created_at->format('d M Y, h:i A'),
                 'is_transfer' => $cashTransaction->transfer_group_id !== null,
             ],
+            'salary' => $cashTransaction->salaryDetail(),
             'linked' => $linked->map(fn (CashTransaction $row) => [
                 'id' => $row->id,
                 'user' => $row->user->name,

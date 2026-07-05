@@ -22,12 +22,13 @@
             'end_minute' => $end['minute'],
             'end_period' => $end['period'],
             'buffer_time' => $b->buffer_time,
+            'max_size' => $b->max_size,
             'frozen' => $b->isFrozen(),
         ];
     })->toArray() : [[
         'start_hour' => 5, 'start_minute' => 20, 'start_period' => 'AM',
         'end_hour' => 6, 'end_minute' => 0, 'end_period' => 'AM',
-        'buffer_time' => 10, 'frozen' => false,
+        'buffer_time' => 10, 'max_size' => 0, 'frozen' => false,
     ]]);
 
     $memberships = old('memberships', $session ? $session->memberships->map(fn ($m) => [
@@ -51,6 +52,11 @@
                 <label for="name" class="form-label">Session Name</label>
                 <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror"
                        value="{{ old('name', $session?->name) }}" required>
+            </div>
+            <div class="mb-3">
+                <label for="form_fee" class="form-label">Form Fee (₹)</label>
+                <input type="number" name="form_fee" id="form_fee" class="form-control @error('form_fee') is-invalid @enderror"
+                       value="{{ old('form_fee', $session?->form_fee ?? 0) }}" min="0" required>
             </div>
         @endunless
         <div>
@@ -166,12 +172,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const defaults = {
             start_hour: 8, start_minute: 0, start_period: 'AM',
             end_hour: 9, end_minute: 0, end_period: 'AM',
-            buffer_time: 10,
+            buffer_time: 10, max_size: 0,
         };
         row.querySelectorAll('select, input').forEach(el => {
             el.removeAttribute('readonly');
             el.removeAttribute('disabled');
-            const match = el.name.match(/\[(start_hour|start_minute|start_period|end_hour|end_minute|end_period|buffer_time)\]$/);
+            const match = el.name.match(/\[(start_hour|start_minute|start_period|end_hour|end_minute|end_period|buffer_time|max_size)\]$/);
             if (!match) return;
             const field = match[1];
             if (el.tagName === 'SELECT') {

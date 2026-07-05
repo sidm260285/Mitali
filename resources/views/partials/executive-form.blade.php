@@ -27,6 +27,14 @@
                value="{{ old('email', $executive?->email) }}">
     </div>
 
+    <div class="col-md-6">
+        <label for="monthly_salary" class="form-label">Monthly Salary <span class="text-danger">*</span></label>
+        <input type="number" name="monthly_salary" id="monthly_salary" min="0" step="1"
+               class="form-control @error('monthly_salary') is-invalid @enderror"
+               value="{{ old('monthly_salary', $executive?->monthly_salary) }}" required>
+        @error('monthly_salary')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
+
     <div class="col-12">
         <label for="address" class="form-label">Address <span class="text-muted">(optional)</span></label>
         <textarea name="address" id="address" rows="3"

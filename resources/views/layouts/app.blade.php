@@ -297,10 +297,6 @@
                     <ul class="navbar-nav mx-auto main-nav">
                         @if(auth()->user()->isAdmin())
                             <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}"
-                                   href="{{ route('admin.dashboard') }}">Dashboard</a>
-                            </li>
-                            <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('admin.executives.*') ? 'active' : '' }}"
                                    href="{{ route('admin.executives.index') }}">Executive</a>
                             </li>
@@ -322,13 +318,12 @@
                             </li>
                             @include('partials.cash-flow-nav')
                             @include('partials.bank-flow-nav')
+                            @include('partials.salary-payment-nav')
+                            @include('partials.admission-nav')
                         @else
-                            <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('executive.dashboard') ? 'active' : '' }}"
-                                   href="{{ route('executive.dashboard') }}">Dashboard</a>
-                            </li>
                             @include('partials.cash-flow-nav')
                             @include('partials.bank-flow-nav')
+                            @include('partials.admission-nav')
                         @endif
                     </ul>
 

@@ -25,6 +25,7 @@ class Session extends Model
     protected $fillable = [
         'name',
         'status',
+        'form_fee',
         'admission_count',
         'attendance_count',
     ];
@@ -32,6 +33,7 @@ class Session extends Model
     protected function casts(): array
     {
         return [
+            'form_fee' => 'integer',
             'admission_count' => 'integer',
             'attendance_count' => 'integer',
         ];
@@ -71,10 +73,11 @@ class Session extends Model
     {
         return $this->ages
             ->map(fn (SessionAge $age) => sprintf(
-                '%d–%d (₹%s)',
+                '%d–%d (₹%s, Admission: %d)',
                 $age->from_age,
                 $age->to_age,
-                number_format((float) $age->fee, 2)
+                number_format((float) $age->fee, 2),
+                $age->admission_counter
             ))
             ->implode("\n") ?: '—';
     }
@@ -83,10 +86,12 @@ class Session extends Model
     {
         return $this->batches
             ->map(fn (SessionBatch $batch) => sprintf(
-                '%s–%s (%dm)',
+                '%s–%s (%dm, Max: %d, Admission: %d)',
                 TimeHelper::format12Hour((string) $batch->start_time),
                 TimeHelper::format12Hour((string) $batch->end_time),
-                $batch->buffer_time
+                $batch->buffer_time,
+                $batch->max_size,
+                $batch->admission_counter
             ))
             ->implode("\n") ?: '—';
     }
@@ -96,10 +101,11 @@ class Session extends Model
         return $this->memberships
             ->sortBy(fn (SessionMembership $membership) => $membership->no_of_slot === -1 ? 99 : $membership->no_of_slot)
             ->map(fn (SessionMembership $membership) => sprintf(
-                '%s (%s, ₹%s)',
+                '%s (%s, ₹%s, Admission: %d)',
                 $membership->card_name,
                 $membership->no_of_slot === -1 ? 'Any' : $membership->no_of_slot.'-Slot',
-                number_format((float) $membership->membership_cost, 2)
+                number_format((float) $membership->membership_cost, 2),
+                $membership->admission_counter
             ))
             ->implode("\n") ?: '—';
     }

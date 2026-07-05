@@ -9,6 +9,7 @@ class SessionTestData
         return array_replace_recursive([
             'name' => 'Session '.uniqid(),
             'status' => 'upcoming',
+            'form_fee' => 0,
             'ages' => [
                 ['from_age' => 1, 'to_age' => 150, 'fee' => 3000],
             ],
@@ -21,6 +22,7 @@ class SessionTestData
                     'end_minute' => 0,
                     'end_period' => 'AM',
                     'buffer_time' => 10,
+                    'max_size' => 30,
                 ],
             ],
             'memberships' => [

@@ -17,6 +17,7 @@ class SessionBatch extends Model
         'start_time',
         'end_time',
         'buffer_time',
+        'max_size',
         'admission_counter',
         'attendance_counter',
     ];
@@ -25,6 +26,7 @@ class SessionBatch extends Model
     {
         return [
             'buffer_time' => 'integer',
+            'max_size' => 'integer',
             'admission_counter' => 'integer',
             'attendance_counter' => 'integer',
         ];

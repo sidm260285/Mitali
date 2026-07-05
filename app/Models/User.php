@@ -37,6 +37,7 @@ class User extends Authenticatable
         'account_no',
         'account_type',
         'branch_name',
+        'monthly_salary',
     ];
 
     protected $hidden = [
@@ -52,6 +53,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
             'balance' => 'decimal:2',
+            'monthly_salary' => 'integer',
         ];
     }
 
@@ -62,7 +64,7 @@ class User extends Authenticatable
 
     public function freshBalance(): float
     {
-        return (float) $this->fresh()->balance;
+        return (float) self::where('id', $this->id)->value('balance');
     }
 
     public function isAdmin(): bool

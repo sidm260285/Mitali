@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AccountHead;
 use App\Models\CashTransaction;
+use App\Models\Trainer;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -123,6 +124,29 @@ class CashTransactionService
         );
     }
 
+    public function transferBankToBank(User $fromBank, User $toBank, float $amount, string $transactionDate, string $transactionId, ?string $narration, int $entryBy): void
+    {
+        $this->assertSufficientBalance($fromBank, $amount);
+
+        $head = AccountHead::findSystem(AccountHead::SYSTEM_BANK_TO_BANK);
+
+        $this->insertPair(
+            debitUser: $fromBank,
+            debitHead: $head,
+            creditUser: $toBank,
+            creditHead: $head,
+            debitMode: CashTransaction::MODE_BANK,
+            creditMode: CashTransaction::MODE_BANK,
+            amount: $amount,
+            transactionDate: $transactionDate,
+            narration: $narration,
+            debitEntryBy: $entryBy,
+            creditEntryBy: $entryBy,
+            debitTransactionId: $transactionId,
+            creditTransactionId: 'Ref-' . $transactionId,
+        );
+    }
+
     public function transferBankToCash(User $bank, User $doer, float $amount, string $transactionDate, string $transactionId, ?string $narration, int $entryBy): void
     {
         $this->assertSufficientBalance($bank, $amount);
@@ -199,6 +223,71 @@ class CashTransactionService
         );
     }
 
+    public function paySalary(
+        User $doer,
+        string $payeeType,
+        int $payeeId,
+        int $salaryMonth,
+        int $salaryYear,
+        float $amount,
+        string $mode,
+        ?User $bank,
+        ?string $transactionId,
+        ?string $narration,
+    ): CashTransaction {
+        if ($payeeType === CashTransaction::SALARY_TYPE_EXECUTIVE) {
+            $payee = User::executives()->active()->findOrFail($payeeId);
+            $monthlySalary = $payee->monthly_salary;
+            $head = AccountHead::findSystem(AccountHead::SYSTEM_SALARY_TO_EXECUTIVE);
+        } else {
+            $payee = Trainer::where('is_active', true)->findOrFail($payeeId);
+            $monthlySalary = $payee->monthly_salary;
+            $head = AccountHead::findSystem(AccountHead::SYSTEM_SALARY_TO_TRAINER);
+        }
+
+        $alreadyPaid = CashTransaction::salaryPaidAmount($payeeType, $payeeId, $salaryMonth, $salaryYear);
+        $remaining = $monthlySalary - $alreadyPaid;
+
+        if ($amount > $remaining) {
+            throw ValidationException::withMessages([
+                'amount' => sprintf(
+                    'Payment of %s exceeds remaining salary of %s (total: %s, already paid: %s).',
+                    number_format($amount, 2),
+                    number_format($remaining, 2),
+                    number_format((float) $monthlySalary, 2),
+                    number_format($alreadyPaid, 2),
+                ),
+            ]);
+        }
+
+        if ($mode === CashTransaction::MODE_BANK) {
+            if (! $bank) {
+                throw ValidationException::withMessages(['bank_id' => 'Bank is required for bank mode.']);
+            }
+            $this->assertSufficientBalance($bank, $amount);
+            $debitUser = $bank;
+        } else {
+            $this->assertSufficientBalance($doer, $amount);
+            $debitUser = $doer;
+        }
+
+        return $this->insertSingle(
+            user: $debitUser,
+            head: $head,
+            type: CashTransaction::TYPE_DEBIT,
+            mode: $mode,
+            amount: $amount,
+            transactionDate: now()->toDateString(),
+            narration: $narration,
+            transactionId: $transactionId,
+            entryBy: $doer->id,
+            salaryType: $payeeType,
+            toSalaryId: $payeeId,
+            salaryMonth: $salaryMonth,
+            salaryYear: $salaryYear,
+        );
+    }
+
     private function insertSingle(
         User $user,
         AccountHead $head,
@@ -209,8 +298,12 @@ class CashTransactionService
         ?string $narration,
         ?string $transactionId = null,
         int $entryBy = 0,
+        ?string $salaryType = null,
+        int $toSalaryId = 0,
+        ?int $salaryMonth = null,
+        ?int $salaryYear = null,
     ): CashTransaction {
-        return DB::transaction(function () use ($user, $head, $type, $mode, $amount, $transactionDate, $narration, $transactionId, $entryBy) {
+        return DB::transaction(function () use ($user, $head, $type, $mode, $amount, $transactionDate, $narration, $transactionId, $entryBy, $salaryType, $toSalaryId, $salaryMonth, $salaryYear) {
             $transaction = CashTransaction::create([
                 'user_id' => $user->id,
                 'account_head_id' => $head->id,
@@ -221,6 +314,10 @@ class CashTransactionService
                 'narration' => $narration,
                 'transaction_id' => $transactionId,
                 'entry_by' => $entryBy,
+                'salary_type' => $salaryType,
+                'to_salary_id' => $toSalaryId,
+                'salary_month' => $salaryMonth,
+                'salary_year' => $salaryYear,
             ]);
 
             return $transaction->fresh(['accountHead', 'user']);
@@ -240,8 +337,9 @@ class CashTransactionService
         int $debitEntryBy = 0,
         int $creditEntryBy = 0,
         ?string $debitTransactionId = null,
+        ?string $creditTransactionId = null,
     ): void {
-        DB::transaction(function () use ($debitUser, $debitHead, $creditUser, $creditHead, $debitMode, $creditMode, $amount, $transactionDate, $narration, $debitEntryBy, $creditEntryBy, $debitTransactionId) {
+        DB::transaction(function () use ($debitUser, $debitHead, $creditUser, $creditHead, $debitMode, $creditMode, $amount, $transactionDate, $narration, $debitEntryBy, $creditEntryBy, $debitTransactionId, $creditTransactionId) {
             $groupId = (string) Str::uuid();
 
             CashTransaction::create([
@@ -267,6 +365,7 @@ class CashTransactionService
                 'narration' => $narration,
                 'transfer_group_id' => $groupId,
                 'entry_by' => $creditEntryBy,
+                'transaction_id' => $creditTransactionId,
             ]);
         });
     }

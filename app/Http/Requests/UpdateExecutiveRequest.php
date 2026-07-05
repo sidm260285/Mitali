@@ -38,6 +38,7 @@ class UpdateExecutiveRequest extends FormRequest
                 Rule::unique('users', 'email')->where('role', User::ROLE_EXECUTIVE)->ignore($executive->id),
             ],
             'address' => ['nullable', 'string', 'max:1000'],
+            'monthly_salary' => ['required', 'integer', 'min:0'],
         ];
     }
 }

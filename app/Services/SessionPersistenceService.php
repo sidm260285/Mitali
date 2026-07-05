@@ -28,6 +28,7 @@ class SessionPersistenceService
             $session = Session::create([
                 'name' => $data['name'],
                 'status' => Session::STATUS_UPCOMING,
+                'form_fee' => (int) ($data['form_fee'] ?? 0),
             ]);
 
             $this->syncChildren($session, $data, collect(), collect(), collect());
@@ -50,6 +51,7 @@ class SessionPersistenceService
             $session->update([
                 'name' => $data['name'],
                 'status' => $data['status'],
+                'form_fee' => (int) ($data['form_fee'] ?? $session->form_fee),
             ]);
 
             $this->syncChildren(
@@ -150,7 +152,8 @@ class SessionPersistenceService
             if (! $submitted
                 || $normalized['start_time'] !== substr((string) $batch->start_time, 0, 8)
                 || $normalized['end_time'] !== substr((string) $batch->end_time, 0, 8)
-                || (int) $normalized['buffer_time'] !== $batch->buffer_time) {
+                || (int) $normalized['buffer_time'] !== $batch->buffer_time
+                || (int) ($submitted['max_size'] ?? 0) !== $batch->max_size) {
                 $errors['batches'] = sprintf(
                     'Batch row %d (%s – %s): cannot be modified because it has admissions.',
                     $row,
@@ -245,6 +248,7 @@ class SessionPersistenceService
                 'start_time' => $batchData['start_time'],
                 'end_time' => $batchData['end_time'],
                 'buffer_time' => (int) $batchData['buffer_time'],
+                'max_size' => (int) ($batchData['max_size'] ?? 0),
             ];
 
             if (! empty($batchData['id']) && $existing->has($batchData['id'])) {
@@ -312,6 +316,7 @@ class SessionPersistenceService
                 (string) $batch['end_period'],
             ),
             'buffer_time' => (int) ($batch['buffer_time'] ?? 0),
+            'max_size' => (int) ($batch['max_size'] ?? 0),
         ];
     }
 }

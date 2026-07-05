@@ -98,6 +98,18 @@
                         linkedHtml += '</ul>';
                     }
 
+                    let salaryHtml = '';
+                    if (data.salary) {
+                        salaryHtml = '<hr><h6 class="mb-3">Salary Details</h6>' +
+                            '<dl class="row mb-0">' +
+                            '<dt class="col-sm-4">Salary For</dt><dd class="col-sm-8">' + data.salary.salary_for + '</dd>' +
+                            '<dt class="col-sm-4">Paid To</dt><dd class="col-sm-8">' + data.salary.paid_to + '</dd>' +
+                            '<dt class="col-sm-4">Salary Period</dt><dd class="col-sm-8">' + data.salary.salary_period + '</dd>' +
+                            '<dt class="col-sm-4">Monthly Salary</dt><dd class="col-sm-8">' + data.salary.monthly_salary + '</dd>' +
+                            '<dt class="col-sm-4">Total Paid</dt><dd class="col-sm-8">' + data.salary.total_paid + '</dd>' +
+                            '</dl>';
+                    }
+
                     body.innerHTML =
                         '<dl class="row mb-0">' +
                         '<dt class="col-sm-4">ID</dt><dd class="col-sm-8">#' + data.transaction.id + '</dd>' +
@@ -109,7 +121,7 @@
                         '<dt class="col-sm-4">Current Balance</dt><dd class="col-sm-8">' + data.transaction.current_balance + '</dd>' +
                         '<dt class="col-sm-4">Created By</dt><dd class="col-sm-8">' + data.transaction.created_by + '</dd>' +
                         '<dt class="col-sm-4">Recorded At</dt><dd class="col-sm-8">' + data.transaction.recorded_at + '</dd>' +
-                        '</dl>' + linkedHtml;
+                        '</dl>' + salaryHtml + linkedHtml;
                 })
                 .catch(function () {
                     body.innerHTML = '<div class="text-danger">Unable to load transaction details.</div>';

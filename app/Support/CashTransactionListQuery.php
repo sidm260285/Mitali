@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 
 class CashTransactionListQuery
 {
-    public static function build(Request $request, int $userId)
+    public static function build(Request $request, int $userId, ?string $mode = null)
     {
         $sort = $request->string('sort', 'id')->toString();
         $direction = $request->string('direction', 'desc')->toString();
@@ -26,12 +26,20 @@ class CashTransactionListQuery
             ->forUser($userId)
             ->filterDateRange($request->input('from_date'), $request->input('to_date'));
 
+        if ($mode !== null) {
+            $query->where('mode', $mode);
+        }
+
         if ($request->filled('account_head_id')) {
             $query->where('account_head_id', $request->integer('account_head_id'));
         }
 
         if ($request->filled('transaction_type')) {
             $query->where('type', $request->string('transaction_type')->toString());
+        }
+
+        if ($request->filled('transaction_id')) {
+            $query->where('transaction_id', 'like', '%'.$request->string('transaction_id')->toString().'%');
         }
 
         return $query
