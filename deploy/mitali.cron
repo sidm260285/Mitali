@@ -1,0 +1,1 @@
+* * * * * apache cd /var/www/mitali/current && /usr/bin/php artisan schedule:run >> /dev/null 2>&1
