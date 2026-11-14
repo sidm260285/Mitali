@@ -66,14 +66,24 @@ class TransactionController extends Controller
                 'recorded_at' => $cashTransaction->created_at->format('d M Y, h:i A'),
                 'is_transfer' => $cashTransaction->transfer_group_id !== null,
             ],
+            'salary' => $cashTransaction->salaryDetail(),
             'linked' => $linked->map(fn (CashTransaction $row) => [
                 'id' => $row->id,
                 'user' => $row->user->name,
                 'type' => $row->typeLabel(),
                 'account_head' => $row->accountHead->name,
                 'amount' => MoneyHelper::format($row->amount),
-                'current_balance' => MoneyHelper::format($row->current_balance),
+                'current_balance' => $this->visibleLinkedBalance($user, $row),
             ])->values(),
         ]);
+    }
+
+    private function visibleLinkedBalance(User $viewer, CashTransaction $row): ?string
+    {
+        if ($viewer->isAdmin() || $row->user_id === $viewer->id) {
+            return MoneyHelper::format($row->current_balance);
+        }
+
+        return null;
     }
 }

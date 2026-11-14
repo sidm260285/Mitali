@@ -6,22 +6,37 @@
         <span class="badge bg-primary age-row-label">Age Range {{ $index + 1 }}</span>
     </div>
     <div class="row g-3 align-items-end">
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label class="form-label">From Age</label>
             <input type="number" name="ages[{{ $index }}][from_age]" class="form-control"
                    value="{{ $age['from_age'] ?? '' }}" min="1" max="150"
                    {{ !empty($age['frozen']) ? 'readonly' : 'required' }}>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
             <label class="form-label">To Age</label>
             <input type="number" name="ages[{{ $index }}][to_age]" class="form-control"
                    value="{{ $age['to_age'] ?? '' }}" min="1" max="150"
                    {{ !empty($age['frozen']) ? 'readonly' : 'required' }}>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-2">
             <label class="form-label">Fee (₹)</label>
-            <input type="number" name="ages[{{ $index }}][fee]" class="form-control" step="0.01" min="0"
+            <input type="number" name="ages[{{ $index }}][fee]" class="form-control" step="0.01"
+                   min="{{ !empty($age['frozen']) ? '0' : '0.01' }}"
                    value="{{ $age['fee'] ?? '' }}"
+                   {{ !empty($age['frozen']) ? 'readonly' : 'required' }}>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Extended Fee (₹)</label>
+            <input type="number" name="ages[{{ $index }}][extended_fee]" class="form-control" step="0.01"
+                   min="{{ !empty($age['frozen']) ? '0' : '0.01' }}"
+                   value="{{ $age['extended_fee'] ?? '' }}"
+                   {{ !empty($age['frozen']) ? 'readonly' : 'required' }}>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Extended Fee Late (₹)</label>
+            <input type="number" name="ages[{{ $index }}][extended_fee_late]" class="form-control" step="0.01"
+                   min="{{ !empty($age['frozen']) ? '0' : '0.01' }}"
+                   value="{{ $age['extended_fee_late'] ?? '' }}"
                    {{ !empty($age['frozen']) ? 'readonly' : 'required' }}>
         </div>
         <div class="col-md-2 text-end">

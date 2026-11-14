@@ -20,6 +20,8 @@ class SessionAgeFactory extends Factory
             'from_age' => 1,
             'to_age' => 150,
             'fee' => 3000,
+            'extended_fee' => 500,
+            'extended_fee_late' => 250,
             'admission_counter' => 0,
             'attendance_counter' => 0,
         ];

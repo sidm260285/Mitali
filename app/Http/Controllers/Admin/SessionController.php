@@ -38,10 +38,15 @@ class SessionController extends Controller
 
         $sessions = $query->paginate(25)->withQueryString();
 
+        $counts = Session::query()
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
         $tabCounts = [
-            Session::STATUS_UPCOMING => Session::where('status', Session::STATUS_UPCOMING)->count(),
-            Session::STATUS_CURRENT => Session::where('status', Session::STATUS_CURRENT)->count(),
-            Session::STATUS_OVER => Session::where('status', Session::STATUS_OVER)->count(),
+            Session::STATUS_UPCOMING => $counts[Session::STATUS_UPCOMING] ?? 0,
+            Session::STATUS_CURRENT => $counts[Session::STATUS_CURRENT] ?? 0,
+            Session::STATUS_OVER => $counts[Session::STATUS_OVER] ?? 0,
         ];
 
         return view('admin.sessions.index', compact('sessions', 'tab', 'tabCounts'));

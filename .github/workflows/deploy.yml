@@ -1,0 +1,121 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  DEPLOY_BUCKET: mitali-deploys-445373908735
+  INSTANCE_ID: i-01f9b6546059099f5
+  DEPLOY_ROLE: arn:aws:iam::445373908735:role/mitali-github-deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: mitali_testing
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, xml, curl, mysql, gd, zip, bcmath, intl
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Run tests
+        run: |
+          sed -i 's/value="8889"/value="3306"/' phpunit.xml
+          php artisan test
+
+      - name: Install production PHP dependencies
+        run: composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+
+      - name: Build frontend
+        run: npm ci && npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.DEPLOY_ROLE }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload release
+        run: |
+          tar -czf release.tar.gz \
+            --exclude .git \
+            --exclude node_modules \
+            --exclude tests \
+            --exclude .env \
+            --exclude .env.* \
+            --exclude storage/logs \
+            --exclude storage/framework/cache/data \
+            --exclude storage/framework/sessions \
+            --exclude storage/framework/views \
+            .
+          aws s3 cp release.tar.gz "s3://${DEPLOY_BUCKET}/releases/${GITHUB_SHA}.tar.gz"
+
+      - name: Deploy on EC2 and migrate RDS
+        run: |
+          set -euo pipefail
+          CMD_ID="$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "deploy ${GITHUB_SHA}" \
+            --timeout-seconds 600 \
+            --parameters "commands=[\"/usr/local/bin/mitali-deploy s3://${DEPLOY_BUCKET}/releases/${GITHUB_SHA}.tar.gz\"]" \
+            --query Command.CommandId \
+            --output text)"
+          echo "SSM command: $CMD_ID"
+          STATUS="Pending"
+          for _ in $(seq 1 60); do
+            STATUS="$(aws ssm get-command-invocation \
+              --command-id "$CMD_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query Status \
+              --output text 2>/dev/null || echo Pending)"
+            echo "status=$STATUS"
+            case "$STATUS" in
+              Success|Failed|Cancelled|TimedOut) break ;;
+            esac
+            sleep 10
+          done
+          aws ssm get-command-invocation \
+            --command-id "$CMD_ID" \
+            --instance-id "$INSTANCE_ID" \
+            --query '{Status:Status,Stdout:StandardOutputContent,Stderr:StandardErrorContent}' \
+            --output json
+          test "$STATUS" = "Success"

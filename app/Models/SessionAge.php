@@ -17,6 +17,8 @@ class SessionAge extends Model
         'from_age',
         'to_age',
         'fee',
+        'extended_fee',
+        'extended_fee_late',
         'admission_counter',
         'attendance_counter',
     ];
@@ -27,6 +29,8 @@ class SessionAge extends Model
             'from_age' => 'integer',
             'to_age' => 'integer',
             'fee' => 'decimal:2',
+            'extended_fee' => 'decimal:2',
+            'extended_fee_late' => 'decimal:2',
             'admission_counter' => 'integer',
             'attendance_counter' => 'integer',
         ];

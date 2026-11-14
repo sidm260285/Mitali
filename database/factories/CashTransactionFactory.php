@@ -20,6 +20,7 @@ class CashTransactionFactory extends Factory
             'user_id' => User::factory(),
             'account_head_id' => AccountHead::factory()->credit(),
             'type' => CashTransaction::TYPE_CREDIT,
+            'mode' => CashTransaction::MODE_CASH,
             'amount' => fake()->randomFloat(2, 100, 5000),
             'transaction_date' => now()->toDateString(),
             'narration' => fake()->optional()->sentence(),

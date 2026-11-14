@@ -48,6 +48,11 @@ class AdminSessionTest extends TestCase
         $this->assertNotNull($session);
         $this->assertSame('upcoming', $session->status);
         $this->assertCount(1, $session->ages);
+        $this->assertSame('2026-01-15', $session->from_date->toDateString());
+        $this->assertSame('2026-06-15', $session->to_date->toDateString());
+        $this->assertSame('2026-09-15', $session->extended_date->toDateString());
+        $this->assertSame('400.00', $session->ages->first()->extended_fee);
+        $this->assertSame('200.00', $session->ages->first()->extended_fee_late);
         $this->assertCount(1, $session->batches);
         $this->assertCount(1, $session->memberships);
     }
@@ -76,12 +81,12 @@ class AdminSessionTest extends TestCase
                 [
                     'start_hour' => 8, 'start_minute' => 0, 'start_period' => 'AM',
                     'end_hour' => 9, 'end_minute' => 0, 'end_period' => 'AM',
-                    'buffer_time' => 10,
+                    'buffer_time' => 10, 'max_size' => 30,
                 ],
                 [
                     'start_hour' => 8, 'start_minute' => 30, 'start_period' => 'AM',
                     'end_hour' => 9, 'end_minute' => 40, 'end_period' => 'AM',
-                    'buffer_time' => 10,
+                    'buffer_time' => 10, 'max_size' => 30,
                 ],
             ],
         ]);
@@ -233,6 +238,173 @@ class AdminSessionTest extends TestCase
         $this->assertSame('3000.00', $age->fresh()->fee);
     }
 
+    public function test_session_dates_must_be_one_month_apart_in_the_same_year(): void
+    {
+        $this->actingAs($this->admin)
+            ->get(route('admin.sessions.create'))
+            ->assertOk()
+            ->assertSee('From Date')
+            ->assertSee('To Date')
+            ->assertSee('Extended Date')
+            ->assertSee('Extended Fee Late');
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.sessions.store'), SessionTestData::validPayload([
+                'from_date' => '2026-05-16',
+                'to_date' => '2026-06-15',
+                'extended_date' => '2026-08-15',
+            ]))
+            ->assertSessionHasErrors([
+                'from_date' => 'From Date must be at least 1 month before To Date.',
+            ]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.sessions.store'), SessionTestData::validPayload([
+                'name' => 'Boundary Session',
+                'from_date' => '2026-05-15',
+                'to_date' => '2026-06-15',
+                'extended_date' => '2026-07-15',
+            ]))
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('training_sessions', [
+            'name' => 'Boundary Session',
+            'from_date' => '2026-05-15',
+            'to_date' => '2026-06-15',
+            'extended_date' => '2026-07-15',
+        ]);
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.sessions.store'), SessionTestData::validPayload([
+                'from_date' => '2026-01-15',
+                'to_date' => '2026-06-15',
+                'extended_date' => '2027-01-15',
+            ]))
+            ->assertSessionHasErrors([
+                'from_date' => 'From Date, To Date, and Extended Date must be in the same year.',
+            ]);
+    }
+
+    public function test_age_fees_must_be_greater_than_zero(): void
+    {
+        $this->actingAs($this->admin)
+            ->post(route('admin.sessions.store'), SessionTestData::validPayload([
+                'ages' => [[
+                    'from_age' => 1,
+                    'to_age' => 150,
+                    'fee' => 0,
+                    'extended_fee' => 400,
+                    'extended_fee_late' => 200,
+                ]],
+            ]))
+            ->assertSessionHasErrors('ages.0.fee');
+
+        $this->actingAs($this->admin)
+            ->post(route('admin.sessions.store'), SessionTestData::validPayload([
+                'ages' => [[
+                    'from_age' => 1,
+                    'to_age' => 150,
+                    'fee' => 10.5,
+                    'extended_fee' => 20.25,
+                    'extended_fee_late' => 0,
+                ]],
+            ]))
+            ->assertSessionHasErrors('ages.0.extended_fee_late');
+    }
+
+    public function test_edit_updates_dates_and_extended_fees(): void
+    {
+        $session = Session::factory()->create(['name' => 'Editable Session']);
+        SessionAge::factory()->create(['session_id' => $session->id]);
+        $session->load(['ages', 'batches', 'memberships']);
+
+        $payload = $this->payloadFromSession($session, [
+            'from_date' => '2026-02-01',
+            'to_date' => '2026-05-01',
+            'extended_date' => '2026-08-01',
+        ]);
+        $payload['ages'][0]['extended_fee'] = 750.5;
+        $payload['ages'][0]['extended_fee_late'] = 125.25;
+
+        $this->actingAs($this->admin)
+            ->put(route('admin.sessions.update', $session), $payload)
+            ->assertRedirect();
+
+        $session->refresh();
+        $this->assertSame('2026-02-01', $session->from_date->toDateString());
+        $this->assertSame('2026-05-01', $session->to_date->toDateString());
+        $this->assertSame('2026-08-01', $session->extended_date->toDateString());
+        $this->assertSame('750.50', $session->ages->first()->extended_fee);
+        $this->assertSame('125.25', $session->ages->first()->extended_fee_late);
+    }
+
+    public function test_frozen_age_keeps_zero_extended_fees_and_rejects_changes(): void
+    {
+        $session = Session::factory()->create();
+        $age = SessionAge::factory()->create([
+            'session_id' => $session->id,
+            'from_age' => 1,
+            'to_age' => 150,
+            'fee' => 3000,
+            'extended_fee' => 0,
+            'extended_fee_late' => 0,
+            'admission_counter' => 2,
+        ]);
+        $session->load(['ages', 'batches', 'memberships']);
+
+        $payload = $this->payloadFromSession($session);
+
+        $this->actingAs($this->admin)
+            ->put(route('admin.sessions.update', $session), $payload)
+            ->assertRedirect();
+
+        $this->assertSame('0.00', $age->fresh()->extended_fee);
+
+        $payload['ages'][0]['extended_fee_late'] = 99;
+
+        $this->actingAs($this->admin)
+            ->put(route('admin.sessions.update', $session), $payload)
+            ->assertSessionHasErrors('ages');
+
+        $this->assertSame('0.00', $age->fresh()->extended_fee_late);
+    }
+
+    public function test_session_list_combines_name_dates_status_and_created(): void
+    {
+        $session = Session::factory()->create([
+            'name' => 'Dated Session',
+            'from_date' => '2026-01-15',
+            'to_date' => '2026-06-15',
+            'extended_date' => '2026-09-15',
+        ]);
+        Session::factory()->create(['name' => 'Undated Session']);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.sessions.index', ['tab' => 'upcoming']))
+            ->assertOk()
+            ->assertSee('Session')
+            ->assertDontSee('>Name<', false)
+            ->assertSee('Dated Session')
+            ->assertSee('From: 15 Jan 2026')
+            ->assertSee('To: 15 Jun 2026')
+            ->assertSee('Extended: 15 Sep 2026')
+            ->assertSee('Upcoming')
+            ->assertSee('Created '.$session->created_at->format('d M Y'))
+            ->assertSee('Undated Session')
+            ->assertSee('From: —');
+    }
+
+    public function test_over_session_edit_does_not_ask_for_dates(): void
+    {
+        $session = Session::factory()->over()->create();
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.sessions.edit', $session))
+            ->assertOk()
+            ->assertDontSee('From Date')
+            ->assertSee('Only status can be changed');
+    }
+
     public function test_executive_cannot_access_sessions(): void
     {
         $executive = User::factory()->executive()->create();
@@ -254,6 +426,8 @@ class AdminSessionTest extends TestCase
                 'from_age' => $age->from_age,
                 'to_age' => $age->to_age,
                 'fee' => $age->fee,
+                'extended_fee' => $age->extended_fee,
+                'extended_fee_late' => $age->extended_fee_late,
             ])->toArray(),
             'memberships' => $session->memberships->map(fn ($m) => [
                 'id' => $m->id,
@@ -274,6 +448,7 @@ class AdminSessionTest extends TestCase
                     'end_minute' => 0,
                     'end_period' => 'AM',
                     'buffer_time' => $batch->buffer_time,
+                    'max_size' => $batch->max_size,
                 ];
             })->toArray();
         }

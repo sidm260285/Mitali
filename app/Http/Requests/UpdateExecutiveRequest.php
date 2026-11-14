@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -25,14 +26,19 @@ class UpdateExecutiveRequest extends FormRequest
                 'alpha_dash',
                 Rule::unique('users', 'username')->ignore($executive->id),
             ],
-            'phone' => ['required', 'digits:10'],
+            'phone' => [
+                'required',
+                'digits:10',
+                Rule::unique('users', 'phone')->where('role', User::ROLE_EXECUTIVE)->ignore($executive->id),
+            ],
             'email' => [
                 'nullable',
                 'email',
                 'max:255',
-                Rule::unique('users', 'email')->ignore($executive->id),
+                Rule::unique('users', 'email')->where('role', User::ROLE_EXECUTIVE)->ignore($executive->id),
             ],
             'address' => ['nullable', 'string', 'max:1000'],
+            'monthly_salary' => ['required', 'integer', 'min:0'],
         ];
     }
 }

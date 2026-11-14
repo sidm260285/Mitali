@@ -16,6 +16,12 @@
             @include('partials.profile-fields', ['user' => $executive])
             <hr>
             <dl class="row mb-0">
+                <dt class="col-sm-3">Monthly Salary</dt>
+                <dd class="col-sm-9">{{ number_format($executive->monthly_salary) }}</dd>
+
+                <dt class="col-sm-3">Current Balance</dt>
+                <dd class="col-sm-9">{{ \App\Support\MoneyHelper::format($executive->balance) }}</dd>
+
                 <dt class="col-sm-3">Status</dt>
                 <dd class="col-sm-9">
                     @if($executive->is_active)
@@ -27,4 +33,12 @@
             </dl>
         </div>
     </div>
+
+    <h5 class="mt-4 mb-3">Transactions</h5>
+    @include('admin.partials.recent-transactions', [
+        'transactions' => $transactions,
+        'hasMoreTransactions' => $hasMoreTransactions,
+        'showMoreUrl' => route('admin.cash-flow.executive-transactions.index', ['executive_id' => $executive->id]),
+        'showReference' => false,
+    ])
 @endsection

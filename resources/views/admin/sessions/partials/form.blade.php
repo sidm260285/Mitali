@@ -7,8 +7,10 @@
         'from_age' => $a->from_age,
         'to_age' => $a->to_age,
         'fee' => $a->fee,
+        'extended_fee' => $a->extended_fee,
+        'extended_fee_late' => $a->extended_fee_late,
         'frozen' => $a->isFrozen(),
-    ])->toArray() : [['from_age' => 1, 'to_age' => 150, 'fee' => 3000, 'frozen' => false]]);
+    ])->toArray() : [['from_age' => 1, 'to_age' => 150, 'fee' => 3000, 'extended_fee' => '', 'extended_fee_late' => '', 'frozen' => false]]);
 
     $batches = old('batches', $session ? $session->batches->map(function ($b) {
         $start = TimeHelper::toParts((string) $b->start_time);
@@ -22,12 +24,13 @@
             'end_minute' => $end['minute'],
             'end_period' => $end['period'],
             'buffer_time' => $b->buffer_time,
+            'max_size' => $b->max_size,
             'frozen' => $b->isFrozen(),
         ];
     })->toArray() : [[
         'start_hour' => 5, 'start_minute' => 20, 'start_period' => 'AM',
         'end_hour' => 6, 'end_minute' => 0, 'end_period' => 'AM',
-        'buffer_time' => 10, 'frozen' => false,
+        'buffer_time' => 10, 'max_size' => 0, 'frozen' => false,
     ]]);
 
     $memberships = old('memberships', $session ? $session->memberships->map(fn ($m) => [
@@ -51,6 +54,31 @@
                 <label for="name" class="form-label">Session Name</label>
                 <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror"
                        value="{{ old('name', $session?->name) }}" required>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label for="from_date" class="form-label">From Date</label>
+                    <input type="date" name="from_date" id="from_date" class="form-control @error('from_date') is-invalid @enderror"
+                           value="{{ old('from_date', $session?->from_date?->format('Y-m-d')) }}" required>
+                    @error('from_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-4">
+                    <label for="to_date" class="form-label">To Date</label>
+                    <input type="date" name="to_date" id="to_date" class="form-control @error('to_date') is-invalid @enderror"
+                           value="{{ old('to_date', $session?->to_date?->format('Y-m-d')) }}" required>
+                    @error('to_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-4">
+                    <label for="extended_date" class="form-label">Extended Date</label>
+                    <input type="date" name="extended_date" id="extended_date" class="form-control @error('extended_date') is-invalid @enderror"
+                           value="{{ old('extended_date', $session?->extended_date?->format('Y-m-d')) }}" required>
+                    @error('extended_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="form_fee" class="form-label">Form Fee (₹)</label>
+                <input type="number" name="form_fee" id="form_fee" class="form-control @error('form_fee') is-invalid @enderror"
+                       value="{{ old('form_fee', $session?->form_fee ?? 0) }}" min="0" required>
             </div>
         @endunless
         <div>
@@ -166,12 +194,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const defaults = {
             start_hour: 8, start_minute: 0, start_period: 'AM',
             end_hour: 9, end_minute: 0, end_period: 'AM',
-            buffer_time: 10,
+            buffer_time: 10, max_size: 0,
         };
         row.querySelectorAll('select, input').forEach(el => {
             el.removeAttribute('readonly');
             el.removeAttribute('disabled');
-            const match = el.name.match(/\[(start_hour|start_minute|start_period|end_hour|end_minute|end_period|buffer_time)\]$/);
+            const match = el.name.match(/\[(start_hour|start_minute|start_period|end_hour|end_minute|end_period|buffer_time|max_size)\]$/);
             if (!match) return;
             const field = match[1];
             if (el.tagName === 'SELECT') {

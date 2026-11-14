@@ -18,14 +18,10 @@
                href="{{ route($isAdmin ? 'admin.cash-flow.outflow.create' : 'executive.cash-flow.outflow.create') }}">Outflow</a>
         </li>
         <li>
-            <a class="dropdown-item {{ request()->routeIs($isAdmin ? 'admin.cash-flow.transactions.*' : 'executive.cash-flow.transactions.*') ? 'active' : '' }}"
-               href="{{ route($isAdmin ? 'admin.cash-flow.transactions.index' : 'executive.cash-flow.transactions.index') }}">Show Transaction</a>
+            <a class="dropdown-item {{ request()->routeIs($isAdmin ? 'admin.cash-flow.cash-to-bank.*' : 'executive.cash-flow.cash-to-bank.*') ? 'active' : '' }}"
+               href="{{ route($isAdmin ? 'admin.cash-flow.cash-to-bank.create' : 'executive.cash-flow.cash-to-bank.create') }}">Cash to Bank</a>
         </li>
         @if($isAdmin)
-            <li>
-                <a class="dropdown-item {{ request()->routeIs('admin.cash-flow.executive-transactions.*') ? 'active' : '' }}"
-                   href="{{ route('admin.cash-flow.executive-transactions.index') }}">Show Executive Transaction</a>
-            </li>
             <li>
                 <a class="dropdown-item {{ request()->routeIs('admin.cash-flow.transfer-to-executive.*') ? 'active' : '' }}"
                    href="{{ route('admin.cash-flow.transfer-to-executive.create') }}">Transfer to Executive</a>
@@ -38,6 +34,16 @@
             <li>
                 <a class="dropdown-item {{ request()->routeIs('executive.cash-flow.transfer-to-admin.*') ? 'active' : '' }}"
                    href="{{ route('executive.cash-flow.transfer-to-admin.create') }}">Transfer to Admin</a>
+            </li>
+        @endif
+        <li>
+            <a class="dropdown-item {{ request()->routeIs($isAdmin ? 'admin.cash-flow.transactions.*' : 'executive.cash-flow.transactions.*') ? 'active' : '' }}"
+               href="{{ route($isAdmin ? 'admin.cash-flow.transactions.index' : 'executive.cash-flow.transactions.index') }}">Show Transaction</a>
+        </li>
+        @if($isAdmin)
+            <li>
+                <a class="dropdown-item {{ request()->routeIs('admin.cash-flow.executive-transactions.*') ? 'active' : '' }}"
+                   href="{{ route('admin.cash-flow.executive-transactions.index') }}">Show Executive Transaction</a>
             </li>
         @endif
     </ul>

@@ -3,9 +3,6 @@
 namespace App\Services;
 
 use App\Models\Session;
-use App\Models\SessionAge;
-use App\Models\SessionBatch;
-use App\Models\SessionMembership;
 use App\Support\TimeHelper;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -17,17 +14,25 @@ class SessionPersistenceService
         private SessionBatchValidator $batchValidator,
         private SessionMembershipValidator $membershipValidator,
         private SessionStatusValidator $statusValidator,
+        private SessionDateValidator $dateValidator,
+        private AdmissionService $admissionService,
     ) {}
 
     public function create(array $data): Session
     {
         $this->validateChildData($data);
+        $this->assertDates($data);
+        $this->assertPositiveAgeFees($data['ages'] ?? []);
         $this->assertStatus($data['status'] ?? Session::STATUS_UPCOMING, new Session);
 
         return DB::transaction(function () use ($data) {
             $session = Session::create([
                 'name' => $data['name'],
+                'from_date' => $data['from_date'],
+                'to_date' => $data['to_date'],
+                'extended_date' => $data['extended_date'],
                 'status' => Session::STATUS_UPCOMING,
+                'form_fee' => (int) ($data['form_fee'] ?? 0),
             ]);
 
             $this->syncChildren($session, $data, collect(), collect(), collect());
@@ -43,13 +48,19 @@ class SessionPersistenceService
         }
 
         $this->validateChildData($data);
+        $this->assertDates($data);
         $this->assertStatus($data['status'], $session);
         $this->assertFrozenRows($session, $data);
+        $this->assertPositiveAgeFees($data['ages'] ?? [], $session->ages()->get()->keyBy('id'));
 
         return DB::transaction(function () use ($session, $data) {
             $session->update([
                 'name' => $data['name'],
+                'from_date' => $data['from_date'],
+                'to_date' => $data['to_date'],
+                'extended_date' => $data['extended_date'],
                 'status' => $data['status'],
+                'form_fee' => (int) ($data['form_fee'] ?? $session->form_fee),
             ]);
 
             $this->syncChildren(
@@ -105,6 +116,46 @@ class SessionPersistenceService
         }
     }
 
+    private function assertDates(array $data): void
+    {
+        $message = $this->dateValidator->validate(
+            $data['from_date'] ?? null,
+            $data['to_date'] ?? null,
+            $data['extended_date'] ?? null,
+        );
+
+        if ($message) {
+            throw ValidationException::withMessages(['from_date' => $message]);
+        }
+    }
+
+    private function assertPositiveAgeFees(array $ages, $existingAges = null): void
+    {
+        foreach ($ages as $index => $age) {
+            $existing = null;
+
+            if ($existingAges && ! empty($age['id'])) {
+                $existing = $existingAges->get($age['id']);
+            }
+
+            if ($existing && $existing->admission_counter > 0) {
+                continue;
+            }
+
+            foreach ([
+                'fee' => 'Fee',
+                'extended_fee' => 'Extended Fee',
+                'extended_fee_late' => 'Extended Fee Late',
+            ] as $key => $label) {
+                if ((float) ($age[$key] ?? 0) <= 0) {
+                    throw ValidationException::withMessages([
+                        'ages' => sprintf('Age row %d: %s must be greater than 0.', $index + 1, $label),
+                    ]);
+                }
+            }
+        }
+    }
+
     private function assertStatus(string $status, Session $session): void
     {
         if ($message = $this->statusValidator->validateTransition($session, $status, $session->id)) {
@@ -127,7 +178,9 @@ class SessionPersistenceService
             if (! $submitted
                 || (int) $submitted['from_age'] !== $age->from_age
                 || (int) $submitted['to_age'] !== $age->to_age
-                || (float) $submitted['fee'] !== (float) $age->fee) {
+                || (float) $submitted['fee'] !== (float) $age->fee
+                || (float) ($submitted['extended_fee'] ?? 0) !== (float) $age->extended_fee
+                || (float) ($submitted['extended_fee_late'] ?? 0) !== (float) $age->extended_fee_late) {
                 $errors['ages'] = sprintf(
                     'Age row %d (%d–%d): cannot be modified because it has admissions.',
                     $row,
@@ -150,7 +203,8 @@ class SessionPersistenceService
             if (! $submitted
                 || $normalized['start_time'] !== substr((string) $batch->start_time, 0, 8)
                 || $normalized['end_time'] !== substr((string) $batch->end_time, 0, 8)
-                || (int) $normalized['buffer_time'] !== $batch->buffer_time) {
+                || (int) $normalized['buffer_time'] !== $batch->buffer_time
+                || (int) ($submitted['max_size'] ?? 0) !== $batch->max_size) {
                 $errors['batches'] = sprintf(
                     'Batch row %d (%s – %s): cannot be modified because it has admissions.',
                     $row,
@@ -219,6 +273,8 @@ class SessionPersistenceService
                 'from_age' => (int) $ageData['from_age'],
                 'to_age' => (int) $ageData['to_age'],
                 'fee' => $ageData['fee'],
+                'extended_fee' => $ageData['extended_fee'],
+                'extended_fee_late' => $ageData['extended_fee_late'],
             ];
 
             if (! empty($ageData['id']) && $existing->has($ageData['id'])) {
@@ -245,6 +301,7 @@ class SessionPersistenceService
                 'start_time' => $batchData['start_time'],
                 'end_time' => $batchData['end_time'],
                 'buffer_time' => (int) $batchData['buffer_time'],
+                'max_size' => (int) ($batchData['max_size'] ?? 0),
             ];
 
             if (! empty($batchData['id']) && $existing->has($batchData['id'])) {
@@ -253,6 +310,7 @@ class SessionPersistenceService
             } else {
                 $created = $session->batches()->create($payload);
                 $keptIds[] = $created->id;
+                $this->admissionService->syncWildcardSlotsForNewBatch($session, $created);
             }
         }
 
@@ -312,6 +370,7 @@ class SessionPersistenceService
                 (string) $batch['end_period'],
             ),
             'buffer_time' => (int) ($batch['buffer_time'] ?? 0),
+            'max_size' => (int) ($batch['max_size'] ?? 0),
         ];
     }
 }

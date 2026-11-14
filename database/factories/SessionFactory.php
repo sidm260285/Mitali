@@ -17,6 +17,7 @@ class SessionFactory extends Factory
         return [
             'name' => 'Session '.fake()->unique()->year(),
             'status' => Session::STATUS_UPCOMING,
+            'form_fee' => 0,
             'admission_count' => 0,
             'attendance_count' => 0,
         ];

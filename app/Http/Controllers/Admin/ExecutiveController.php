@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreExecutiveRequest;
 use App\Http\Requests\UpdateExecutiveRequest;
 use App\Models\User;
+use App\Support\CashTransactionListQuery;
 use App\Support\PasswordGenerator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -54,7 +55,13 @@ class ExecutiveController extends Controller
     {
         $this->ensureExecutive($executive);
 
-        return view('admin.executives.show', compact('executive'));
+        $recent = CashTransactionListQuery::recentForAccount($executive->id);
+
+        return view('admin.executives.show', [
+            'executive' => $executive,
+            'transactions' => $recent['transactions'],
+            'hasMoreTransactions' => $recent['has_more'],
+        ]);
     }
 
     public function edit(User $executive): View
