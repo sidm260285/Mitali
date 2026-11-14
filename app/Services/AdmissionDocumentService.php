@@ -128,21 +128,33 @@ class AdmissionDocumentService
         imagedestroy($source);
 
         $filename = Str::uuid()->toString().'.jpg';
-        $absolutePath = $this->absolutePath($admission, $filename);
-        $this->ensureDirectoryExists(dirname($absolutePath));
+        $relativePath = $this->directoryFor($admission).'/'.$filename;
+        $tempPath = tempnam(sys_get_temp_dir(), 'admission-img');
 
-        $quality = (int) config('admission.jpeg_quality', 80);
-        $targetBytes = (int) config('admission.target_file_size_kb', 500) * 1024;
+        if ($tempPath === false) {
+            imagedestroy($canvas);
+            throw new \RuntimeException('Unable to create a temporary image file.');
+        }
 
-        do {
-            imagejpeg($canvas, $absolutePath, $quality);
-            $fileSize = filesize($absolutePath) ?: 0;
-            $quality -= 10;
-        } while ($fileSize > $targetBytes && $quality >= 40);
+        $fileSize = 0;
 
-        imagedestroy($canvas);
+        try {
+            $quality = (int) config('admission.jpeg_quality', 80);
+            $targetBytes = (int) config('admission.target_file_size_kb', 500) * 1024;
 
-        return [$this->directoryFor($admission).'/'.$filename, $fileSize, 'image/jpeg'];
+            do {
+                imagejpeg($canvas, $tempPath, $quality);
+                $fileSize = filesize($tempPath) ?: 0;
+                $quality -= 10;
+            } while ($fileSize > $targetBytes && $quality >= 40);
+
+            $this->putPrivateFile($relativePath, (string) file_get_contents($tempPath), 'image/jpeg');
+        } finally {
+            imagedestroy($canvas);
+            @unlink($tempPath);
+        }
+
+        return [$relativePath, $fileSize, 'image/jpeg'];
     }
 
     private function loadImage(string $path, string $mime)
@@ -179,13 +191,20 @@ class AdmissionDocumentService
         $extension = strtolower($file->getClientOriginalExtension() ?: 'jpg');
         $filename = Str::uuid()->toString().'.'.$extension;
 
-        Storage::disk($this->disk())->putFileAs(
+        $relativePath = $this->directoryFor($admission).'/'.$filename;
+
+        $stored = Storage::disk($this->disk())->putFileAs(
             $this->directoryFor($admission),
             $file,
             $filename,
+            ['visibility' => 'private'],
         );
 
-        return $this->directoryFor($admission).'/'.$filename;
+        if ($stored === false) {
+            throw new \RuntimeException('Unable to store the uploaded file.');
+        }
+
+        return $relativePath;
     }
 
     private function directoryFor(Admission $admission): string
@@ -198,15 +217,15 @@ class AdmissionDocumentService
         return (string) config('admission.storage_disk');
     }
 
-    private function absolutePath(Admission $admission, string $filename): string
+    private function putPrivateFile(string $path, string $contents, string $mime): void
     {
-        return Storage::disk($this->disk())->path($this->directoryFor($admission).'/'.$filename);
-    }
+        $stored = Storage::disk($this->disk())->put($path, $contents, [
+            'visibility' => 'private',
+            'mimetype' => $mime,
+        ]);
 
-    private function ensureDirectoryExists(string $directory): void
-    {
-        if (! is_dir($directory)) {
-            mkdir($directory, 0755, true);
+        if ($stored === false) {
+            throw new \RuntimeException('Unable to store the uploaded file.');
         }
     }
 }

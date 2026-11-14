@@ -122,11 +122,16 @@ class TrainerDocumentService
         $filename = Str::uuid()->toString().'.'.$extension;
         $path = $this->directoryFor($trainer).'/'.$filename;
 
-        Storage::disk($this->disk())->putFileAs(
+        $stored = Storage::disk($this->disk())->putFileAs(
             $this->directoryFor($trainer),
             $file,
             $filename,
+            ['visibility' => 'private'],
         );
+
+        if ($stored === false) {
+            throw new \RuntimeException('Unable to store the uploaded file.');
+        }
 
         return $path;
     }
@@ -158,27 +163,38 @@ class TrainerDocumentService
         imagedestroy($source);
 
         $filename = Str::uuid()->toString().'.jpg';
-        $absolutePath = $this->absolutePath($trainer, $filename);
-        $this->ensureDirectoryExists(dirname($absolutePath));
+        $relativePath = $this->directoryFor($trainer).'/'.$filename;
+        $tempPath = tempnam(sys_get_temp_dir(), 'trainer-img');
 
-        $quality = 85;
-        do {
-            imagejpeg($canvas, $absolutePath, $quality);
-            $fileSize = filesize($absolutePath) ?: 0;
-            $quality -= 10;
-        } while ($fileSize > $this->maxBytes() && $quality >= 40);
-
-        imagedestroy($canvas);
-
-        if ($fileSize > $this->maxBytes()) {
-            @unlink($absolutePath);
-
-            throw ValidationException::withMessages([
-                'file' => sprintf('Image could not be reduced below %d MB.', config('trainer.max_file_size_mb')),
-            ]);
+        if ($tempPath === false) {
+            imagedestroy($canvas);
+            throw new \RuntimeException('Unable to create a temporary image file.');
         }
 
-        return [$this->directoryFor($trainer).'/'.$filename, $fileSize, 'image/jpeg'];
+        $fileSize = 0;
+
+        try {
+            $quality = 85;
+
+            do {
+                imagejpeg($canvas, $tempPath, $quality);
+                $fileSize = filesize($tempPath) ?: 0;
+                $quality -= 10;
+            } while ($fileSize > $this->maxBytes() && $quality >= 40);
+
+            if ($fileSize > $this->maxBytes()) {
+                throw ValidationException::withMessages([
+                    'file' => sprintf('Image could not be reduced below %d MB.', config('trainer.max_file_size_mb')),
+                ]);
+            }
+
+            $this->putPrivateFile($relativePath, (string) file_get_contents($tempPath));
+        } finally {
+            imagedestroy($canvas);
+            @unlink($tempPath);
+        }
+
+        return [$relativePath, $fileSize, 'image/jpeg'];
     }
 
     private function loadImage(string $path, string $mime)
@@ -220,15 +236,15 @@ class TrainerDocumentService
         return (int) config('trainer.max_file_size_mb') * 1024 * 1024;
     }
 
-    private function absolutePath(Trainer $trainer, string $filename): string
+    private function putPrivateFile(string $path, string $contents): void
     {
-        return Storage::disk($this->disk())->path($this->directoryFor($trainer).'/'.$filename);
-    }
+        $stored = Storage::disk($this->disk())->put($path, $contents, [
+            'visibility' => 'private',
+            'mimetype' => 'image/jpeg',
+        ]);
 
-    private function ensureDirectoryExists(string $directory): void
-    {
-        if (! is_dir($directory)) {
-            mkdir($directory, 0755, true);
+        if ($stored === false) {
+            throw new \RuntimeException('Unable to store the uploaded file.');
         }
     }
 }

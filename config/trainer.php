@@ -7,8 +7,8 @@ return [
     | Trainer Document Storage Disk
     |--------------------------------------------------------------------------
     |
-    | Disk defined in config/filesystems.php. Use "trainer_uploads" for local
-    | project upload folder, or switch to "s3" with minimal code changes.
+    | Disk defined in config/filesystems.php. Trainer files are stored
+    | privately in the S3 bucket configured by AWS_BUCKET.
     |
     */
 
