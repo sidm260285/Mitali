@@ -7,8 +7,10 @@
         'from_age' => $a->from_age,
         'to_age' => $a->to_age,
         'fee' => $a->fee,
+        'extended_fee' => $a->extended_fee,
+        'extended_fee_late' => $a->extended_fee_late,
         'frozen' => $a->isFrozen(),
-    ])->toArray() : [['from_age' => 1, 'to_age' => 150, 'fee' => 3000, 'frozen' => false]]);
+    ])->toArray() : [['from_age' => 1, 'to_age' => 150, 'fee' => 3000, 'extended_fee' => '', 'extended_fee_late' => '', 'frozen' => false]]);
 
     $batches = old('batches', $session ? $session->batches->map(function ($b) {
         $start = TimeHelper::toParts((string) $b->start_time);
@@ -52,6 +54,26 @@
                 <label for="name" class="form-label">Session Name</label>
                 <input type="text" name="name" id="name" class="form-control @error('name') is-invalid @enderror"
                        value="{{ old('name', $session?->name) }}" required>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label for="from_date" class="form-label">From Date</label>
+                    <input type="date" name="from_date" id="from_date" class="form-control @error('from_date') is-invalid @enderror"
+                           value="{{ old('from_date', $session?->from_date?->format('Y-m-d')) }}" required>
+                    @error('from_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-4">
+                    <label for="to_date" class="form-label">To Date</label>
+                    <input type="date" name="to_date" id="to_date" class="form-control @error('to_date') is-invalid @enderror"
+                           value="{{ old('to_date', $session?->to_date?->format('Y-m-d')) }}" required>
+                    @error('to_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
+                <div class="col-md-4">
+                    <label for="extended_date" class="form-label">Extended Date</label>
+                    <input type="date" name="extended_date" id="extended_date" class="form-control @error('extended_date') is-invalid @enderror"
+                           value="{{ old('extended_date', $session?->extended_date?->format('Y-m-d')) }}" required>
+                    @error('extended_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                </div>
             </div>
             <div class="mb-3">
                 <label for="form_fee" class="form-label">Form Fee (₹)</label>

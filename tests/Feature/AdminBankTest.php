@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\AccountHead;
+use App\Models\CashTransaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -297,6 +299,107 @@ class AdminBankTest extends TestCase
                 'password' => 'password123',
             ])
             ->assertSessionHasErrors(['phone', 'email']);
+    }
+
+    public function test_bank_list_shows_account_balance(): void
+    {
+        User::factory()->bank()->create([
+            'name' => 'Balance Bank',
+            'balance' => 2500.75,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.banks.index'))
+            ->assertOk()
+            ->assertSee('Balance')
+            ->assertSee('Balance Bank')
+            ->assertSee('₹2,500.75');
+    }
+
+    public function test_bank_detail_shows_latest_ten_bank_transactions_and_current_balance(): void
+    {
+        $head = AccountHead::factory()->credit()->create(['name' => 'Bank Head']);
+        $bank = User::factory()->bank()->create(['name' => 'Preview Bank']);
+        $other = User::factory()->bank()->create();
+
+        foreach (range(1, 11) as $n) {
+            $narration = match ($n) {
+                1 => 'bank-oldest-row',
+                2 => 'bank-included-edge',
+                11 => 'bank-newest-row',
+                default => "bank-middle-{$n}",
+            };
+
+            CashTransaction::factory()->create([
+                'user_id' => $bank->id,
+                'account_head_id' => $head->id,
+                'mode' => CashTransaction::MODE_BANK,
+                'type' => CashTransaction::TYPE_CREDIT,
+                'amount' => 10,
+                'narration' => $narration,
+                'transaction_id' => "REF-{$n}",
+            ]);
+        }
+
+        CashTransaction::factory()->create([
+            'user_id' => $bank->id,
+            'account_head_id' => $head->id,
+            'mode' => CashTransaction::MODE_CASH,
+            'narration' => 'bank-cash-hidden',
+        ]);
+
+        CashTransaction::factory()->create([
+            'user_id' => $other->id,
+            'account_head_id' => $head->id,
+            'mode' => CashTransaction::MODE_BANK,
+            'narration' => 'other-bank-hidden',
+        ]);
+
+        $bank->update(['balance' => 4321.50]);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.banks.show', $bank))
+            ->assertOk()
+            ->assertSee('Current Balance')
+            ->assertSee('₹4,321.50')
+            ->assertSee('Bank Head')
+            ->assertSee('REF-11')
+            ->assertSee('bank-newest-row')
+            ->assertSee('bank-included-edge')
+            ->assertDontSee('bank-oldest-row')
+            ->assertDontSee('bank-cash-hidden')
+            ->assertDontSee('other-bank-hidden')
+            ->assertSee('Show more')
+            ->assertSee(route('admin.bank-flow.transactions.index', ['bank_id' => $bank->id]), false);
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.bank-flow.transactions.index', ['bank_id' => $bank->id]))
+            ->assertOk()
+            ->assertSee('bank-oldest-row')
+            ->assertSee('bank-newest-row')
+            ->assertDontSee('bank-cash-hidden');
+    }
+
+    public function test_bank_detail_hides_show_more_when_ten_or_fewer_transactions(): void
+    {
+        $head = AccountHead::factory()->credit()->create();
+        $bank = User::factory()->bank()->create();
+
+        foreach (range(1, 10) as $n) {
+            CashTransaction::factory()->create([
+                'user_id' => $bank->id,
+                'account_head_id' => $head->id,
+                'mode' => CashTransaction::MODE_BANK,
+                'narration' => $n === 1 ? 'bank-exact-oldest' : ($n === 10 ? 'bank-exact-newest' : "bank-exact-middle-{$n}"),
+            ]);
+        }
+
+        $this->actingAs($this->admin)
+            ->get(route('admin.banks.show', $bank))
+            ->assertOk()
+            ->assertSee('bank-exact-oldest')
+            ->assertSee('bank-exact-newest')
+            ->assertDontSee('Show more');
     }
 
     public function test_bank_and_executive_can_share_email_and_phone(): void

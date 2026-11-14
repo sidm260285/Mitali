@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreBankRequest;
 use App\Http\Requests\UpdateBankRequest;
+use App\Models\CashTransaction;
 use App\Models\User;
+use App\Support\CashTransactionListQuery;
 use App\Support\PasswordGenerator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -55,7 +57,13 @@ class BankController extends Controller
     {
         $this->ensureBank($bank);
 
-        return view('admin.banks.show', compact('bank'));
+        $recent = CashTransactionListQuery::recentForAccount($bank->id, mode: CashTransaction::MODE_BANK);
+
+        return view('admin.banks.show', [
+            'bank' => $bank,
+            'transactions' => $recent['transactions'],
+            'hasMoreTransactions' => $recent['has_more'],
+        ]);
     }
 
     public function edit(User $bank): View

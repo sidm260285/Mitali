@@ -28,6 +28,7 @@
             <div class="card-body">
                 <table class="table table-sm table-borderless mb-0">
                     <tr><th class="text-muted" style="width:40%">Full Name</th><td>{{ $admission->full_name }}</td></tr>
+                    <tr><th class="text-muted">Physically Disabled?</th><td>{{ $admission->physically_disabled ? 'Yes' : 'No' }}</td></tr>
                     <tr><th class="text-muted">Gender</th><td>{{ ucfirst($admission->gender) }}</td></tr>
                     <tr><th class="text-muted">Date of Birth</th><td>{{ $admission->date_of_birth->format('d M Y') }}</td></tr>
                     <tr><th class="text-muted">Age</th><td>{{ $admission->calculatedAge() }} years</td></tr>
@@ -50,6 +51,9 @@
             <div class="card-body">
                 <table class="table table-sm table-borderless mb-0">
                     <tr><th class="text-muted" style="width:40%">Session</th><td>{{ $admission->session->name }}</td></tr>
+                    <tr><th class="text-muted">Session Start Date</th><td>{{ $admission->session_start_date?->format('d M Y') ?? '—' }}</td></tr>
+                    <tr><th class="text-muted">Session End Date</th><td>{{ $admission->session_end_date?->format('d M Y') ?? '—' }}</td></tr>
+                    <tr><th class="text-muted">Extended Session</th><td>{{ $admission->is_extended_membership ? 'Yes' : 'No' }}</td></tr>
                     <tr><th class="text-muted">Membership Card</th><td>{{ $admission->membership->card_name ?? '—' }}</td></tr>
                     <tr><th class="text-muted">RFID Code</th><td><code>{{ $admission->rfid_code }}</code></td></tr>
                     <tr>
@@ -69,10 +73,17 @@
             <div class="card-header bg-white"><h6 class="mb-0">Payment & Status</h6></div>
             <div class="card-body">
                 <table class="table table-sm table-borderless mb-0">
-                    <tr><th class="text-muted" style="width:40%">Amount</th><td><strong>₹{{ number_format((float)$admission->amount, 2) }}</strong></td></tr>
+                    <tr>
+                        <th class="text-muted" style="width:40%">Amount</th>
+                        <td>
+                            <strong>₹{{ number_format((float)$admission->amount, 2) }}</strong>
+                            @include('admission.partials.fee-breakdown')
+                        </td>
+                    </tr>
                     <tr><th class="text-muted">Payment Mode</th><td>{{ ucfirst($admission->payment_mode) }}</td></tr>
-                    @if($admission->cashTransaction)
-                        <tr><th class="text-muted">Transaction ID</th><td>{{ $admission->cashTransaction->transaction_id ?? '—' }}</td></tr>
+                    @if($admission->payment_mode === 'bank' && $admission->cashTransaction)
+                        <tr><th class="text-muted">Bank</th><td>{{ $admission->cashTransaction->user->name ?? '—' }}</td></tr>
+                        <tr><th class="text-muted">Ref Transaction ID</th><td>{{ $admission->cashTransaction->transaction_id ?? '—' }}</td></tr>
                     @endif
                     <tr>
                         <th class="text-muted">Status</th>

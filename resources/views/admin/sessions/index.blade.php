@@ -40,28 +40,31 @@
             <table class="table table-hover mb-0 align-middle">
                 <thead class="table-light">
                     <tr>
-                        <th>Name</th>
-                        <th>Status</th>
+                        <th>Session</th>
                         <th>Ages</th>
                         <th>Batches</th>
                         <th>Membership</th>
-                        <th>Created</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($sessions as $session)
                         <tr>
-                            <td class="fw-semibold">{{ $session->name }}</td>
                             <td>
-                                <span class="badge bg-{{ $session->status === 'current' ? 'primary' : ($session->status === 'upcoming' ? 'info text-dark' : 'secondary') }}">
+                                <div class="fw-semibold">{{ $session->name }}</div>
+                                <div class="small text-muted mt-1">
+                                    From: {{ $session->from_date?->format('d M Y') ?? '—' }}<br>
+                                    To: {{ $session->to_date?->format('d M Y') ?? '—' }}<br>
+                                    Extended: {{ $session->extended_date?->format('d M Y') ?? '—' }}
+                                </div>
+                                <span class="badge mt-1 bg-{{ $session->status === 'current' ? 'primary' : ($session->status === 'upcoming' ? 'info text-dark' : 'secondary') }}">
                                     {{ $session->statusLabel() }}
                                 </span>
+                                <div class="small text-muted mt-1">Created {{ $session->created_at->format('d M Y') }}</div>
                             </td>
                             <td class="small text-muted session-list-cell">{!! nl2br(e($session->agesSummary())) !!}</td>
                             <td class="small text-muted session-list-cell">{!! nl2br(e($session->batchesSummary())) !!}</td>
                             <td class="small text-muted session-list-cell">{!! nl2br(e($session->membershipsSummary())) !!}</td>
-                            <td>{{ $session->created_at->format('d M Y') }}</td>
                             <td class="text-end">
                                 <div class="table-actions">
                                     <a href="{{ route('admin.sessions.edit', $session) }}"
@@ -83,7 +86,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">
+                            <td colspan="5" class="text-center text-muted py-4">
                                 No {{ $tab }} sessions found.
                             </td>
                         </tr>

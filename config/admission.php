@@ -14,4 +14,6 @@ return [
 
     'target_file_size_kb' => (int) env('ADMISSION_TARGET_FILE_SIZE_KB', 500),
 
+    'extended_upgrade_grace_days' => (int) env('ADMISSION_EXTENDED_UPGRADE_GRACE_DAYS', 30),
+
 ];

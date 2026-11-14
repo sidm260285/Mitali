@@ -40,6 +40,7 @@
                         <th>Account Type</th>
                         <th>Branch Name</th>
                         <th>Status</th>
+                        <th class="text-end">Balance</th>
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -58,6 +59,7 @@
                                     <span class="badge bg-secondary">Inactive</span>
                                 @endif
                             </td>
+                            <td class="text-end">{{ \App\Support\MoneyHelper::format($bank->balance) }}</td>
                             <td class="text-end">
                                 <div class="table-actions">
                                     <a href="{{ route('admin.banks.show', $bank) }}"
@@ -101,7 +103,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">No banks found.</td>
+                            <td colspan="8" class="text-center text-muted py-4">No banks found.</td>
                         </tr>
                     @endforelse
                 </tbody>

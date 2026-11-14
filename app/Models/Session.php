@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Services\SessionMembershipValidator;
 use App\Support\TimeHelper;
 use Database\Factories\SessionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,6 +23,9 @@ class Session extends Model
 
     protected $fillable = [
         'name',
+        'from_date',
+        'to_date',
+        'extended_date',
         'status',
         'form_fee',
         'admission_count',
@@ -33,6 +35,9 @@ class Session extends Model
     protected function casts(): array
     {
         return [
+            'from_date' => 'date',
+            'to_date' => 'date',
+            'extended_date' => 'date',
             'form_fee' => 'integer',
             'admission_count' => 'integer',
             'attendance_count' => 'integer',

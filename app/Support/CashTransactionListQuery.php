@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\AccountHead;
 use App\Models\CashTransaction;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class CashTransactionListQuery
 {
@@ -51,5 +52,26 @@ class CashTransactionListQuery
     public static function filterAccountHeads()
     {
         return AccountHead::query()->orderBy('name')->get();
+    }
+
+    /**
+     * @return array{transactions: Collection<int, CashTransaction>, has_more: bool}
+     */
+    public static function recentForAccount(int $userId, int $limit = 10, ?string $mode = null): array
+    {
+        $query = CashTransaction::query()
+            ->with('accountHead')
+            ->forUser($userId);
+
+        if ($mode !== null) {
+            $query->where('mode', $mode);
+        }
+
+        $total = (clone $query)->count();
+
+        return [
+            'transactions' => (clone $query)->orderByDesc('id')->limit($limit)->get(),
+            'has_more' => $total > $limit,
+        ];
     }
 }

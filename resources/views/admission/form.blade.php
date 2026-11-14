@@ -15,16 +15,26 @@
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header bg-white"><h5 class="mb-0">Session</h5></div>
             <div class="card-body">
-                <div class="mb-3">
-                    <label for="session_id" class="form-label">Select Session <span class="text-danger">*</span></label>
-                    <select name="session_id" id="session_id" class="form-select @error('session_id') is-invalid @enderror" required>
-                        @foreach($sessions as $session)
-                            <option value="{{ $session->id }}" @selected(old('session_id', $selectedSession?->id) == $session->id)>
-                                {{ $session->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('session_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="session_id" class="form-label">Select Session <span class="text-danger">*</span></label>
+                        <select name="session_id" id="session_id" class="form-select @error('session_id') is-invalid @enderror" required>
+                            @foreach($sessions as $session)
+                                <option value="{{ $session->id }}" @selected(old('session_id', $selectedSession?->id) == $session->id)>
+                                    {{ $session->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('session_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-4">
+                        <label for="session_start_date" class="form-label">Session Start Date</label>
+                        <input type="text" id="session_start_date" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="session_end_date" class="form-label">Session End Date</label>
+                        <input type="text" id="session_end_date" class="form-control" readonly>
+                    </div>
                 </div>
             </div>
         </div>
@@ -34,11 +44,20 @@
             <div class="card-header bg-white"><h5 class="mb-0">Personal Details</h5></div>
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label for="full_name" class="form-label">Full Name <span class="text-danger">*</span></label>
                         <input type="text" name="full_name" id="full_name" class="form-control @error('full_name') is-invalid @enderror"
                                value="{{ old('full_name') }}" required>
                         @error('full_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                    <div class="col-md-2">
+                        <label for="physically_disabled" class="form-label">Physically Disabled? <span class="text-danger">*</span></label>
+                        <select name="physically_disabled" id="physically_disabled" class="form-select @error('physically_disabled') is-invalid @enderror" required>
+                            <option value="">-- Select --</option>
+                            <option value="1" @selected(old('physically_disabled') === '1')>Yes</option>
+                            <option value="0" @selected(old('physically_disabled') === '0')>No</option>
+                        </select>
+                        @error('physically_disabled')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                     <div class="col-md-3">
                         <label for="gender" class="form-label">Gender <span class="text-danger">*</span></label>
@@ -53,8 +72,10 @@
                     <div class="col-md-3">
                         <label for="date_of_birth" class="form-label">Date of Birth <span class="text-danger">*</span></label>
                         <input type="date" name="date_of_birth" id="date_of_birth" class="form-control @error('date_of_birth') is-invalid @enderror"
+                               max="{{ \App\Models\Admission::latestDateOfBirth() }}"
                                value="{{ old('date_of_birth') }}" required>
                         @error('date_of_birth')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <div class="form-text">Member must be at least 1 year old.</div>
                     </div>
                     <div class="col-md-4">
                         <label for="mobile_no" class="form-label">Mobile No. <span class="text-danger">*</span></label>
@@ -123,6 +144,14 @@
                                value="{{ old('rfid_code') }}" required>
                         @error('rfid_code')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
+                    <div class="col-md-4">
+                        <label for="is_extended_membership" class="form-label">Extended Session <span class="text-danger">*</span></label>
+                        <select name="is_extended_membership" id="is_extended_membership" class="form-select @error('is_extended_membership') is-invalid @enderror" required>
+                            <option value="0" @selected(old('is_extended_membership', '0') === '0')>No</option>
+                            <option value="1" @selected(old('is_extended_membership') === '1')>Yes</option>
+                        </select>
+                        @error('is_extended_membership')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
                     <div class="col-12">
                         <label class="form-label">Select Batch(es) <span class="text-danger">*</span></label>
                         <div id="batchSelection" class="row g-2">
@@ -143,6 +172,12 @@
                     <div class="col-md-4">
                         <label for="amount_display" class="form-label">Total Amount (₹)</label>
                         <input type="text" id="amount_display" class="form-control" readonly value="0.00">
+                        <div id="feeBreakdown" class="small text-muted mt-2" hidden>
+                            <div>Membership (<span id="bdMembershipName"></span>): ₹<span id="bdMembershipAmount"></span></div>
+                            <div>Age Fee (<span id="bdAgeLabel"></span>): ₹<span id="bdAgeFee"></span></div>
+                            <div>Form Fee: ₹<span id="bdFormFee"></span></div>
+                            <div id="bdExtendedRow">Extended Fee: ₹<span id="bdExtendedFee"></span></div>
+                        </div>
                     </div>
                     <div class="col-md-4">
                         <label for="payment_mode" class="form-label">Payment Mode <span class="text-danger">*</span></label>
@@ -190,14 +225,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const batchHint = document.getElementById('batchHint');
     const dobInput = document.getElementById('date_of_birth');
     const amountDisplay = document.getElementById('amount_display');
+    const extendedSelect = document.getElementById('is_extended_membership');
+    const startDateInput = document.getElementById('session_start_date');
+    const endDateInput = document.getElementById('session_end_date');
+    const feeBreakdown = document.getElementById('feeBreakdown');
     const paymentMode = document.getElementById('payment_mode');
     const bankFields = document.getElementById('bankFields');
     const transactionIdField = document.getElementById('transactionIdField');
     const form = document.getElementById('admissionForm');
 
     const sessionDataUrlBase = "{{ route((auth()->user()->isAdmin() ? 'admin' : 'executive') . '.admission.session-data', ['session' => '__ID__']) }}";
+    const feeUrl = "{{ route((auth()->user()->isAdmin() ? 'admin' : 'executive') . '.admission.calculate-fee') }}";
 
     let sessionData = null;
+    let feeRequest = 0;
 
     function loadSessionData() {
         const sessionId = sessionSelect.value;
@@ -289,33 +330,68 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function updateSessionDates() {
+        if (!sessionData) {
+            startDateInput.value = '';
+            endDateInput.value = '';
+            return;
+        }
+
+        startDateInput.value = sessionData.from_date || '';
+        const extended = extendedSelect.value === '1';
+        endDateInput.value = extended ? (sessionData.extended_date || '') : (sessionData.to_date || '');
+    }
+
+    function hideBreakdown() {
+        feeBreakdown.hidden = true;
+    }
+
+    function money(value) {
+        return Number(value).toFixed(2);
+    }
+
+    function showBreakdown(data) {
+        document.getElementById('bdMembershipName').textContent = data.membership_name;
+        document.getElementById('bdMembershipAmount').textContent = money(data.membership_amount);
+        document.getElementById('bdAgeLabel').textContent = data.age_label;
+        document.getElementById('bdAgeFee').textContent = money(data.age_fee);
+        document.getElementById('bdFormFee').textContent = money(data.form_fee);
+        document.getElementById('bdExtendedRow').hidden = !data.is_extended;
+        document.getElementById('bdExtendedFee').textContent = money(data.extended_fee);
+        feeBreakdown.hidden = false;
+        amountDisplay.value = money(data.amount);
+    }
+
     function recalculateAmount() {
+        updateSessionDates();
+
         if (!sessionData || !membershipSelect.value || !dobInput.value) {
             amountDisplay.value = '0.00';
+            hideBreakdown();
             return;
         }
 
-        const dob = new Date(dobInput.value);
-        const today = new Date();
-        let age = today.getFullYear() - dob.getFullYear();
-        const m = today.getMonth() - dob.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-        age = Math.floor(age);
+        const requestId = ++feeRequest;
+        const params = new URLSearchParams({
+            session_id: sessionSelect.value,
+            session_membership_id: membershipSelect.value,
+            date_of_birth: dobInput.value,
+            is_extended_membership: extendedSelect.value,
+        });
 
-        const ageGroup = sessionData.ages.find(a => age >= a.from_age && age <= a.to_age);
-        if (!ageGroup) {
-            amountDisplay.value = 'Age not in range';
-            return;
-        }
+        fetch(feeUrl + '?' + params.toString())
+            .then(r => r.json())
+            .then(data => {
+                if (requestId !== feeRequest) return;
 
-        const membership = sessionData.memberships.find(m => m.id == membershipSelect.value);
-        if (!membership) {
-            amountDisplay.value = '0.00';
-            return;
-        }
+                if (!data.membership_name) {
+                    amountDisplay.value = data.error || '0.00';
+                    hideBreakdown();
+                    return;
+                }
 
-        const total = membership.membership_cost + ageGroup.fee + sessionData.form_fee;
-        amountDisplay.value = total.toFixed(2);
+                showBreakdown(data);
+            });
     }
 
     function validateBatchSelection() {
@@ -346,6 +422,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     dobInput.addEventListener('change', recalculateAmount);
+    extendedSelect.addEventListener('change', recalculateAmount);
 
     batchContainer.addEventListener('change', function (e) {
         if (e.target.classList.contains('batch-check')) {

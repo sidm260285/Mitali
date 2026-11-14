@@ -35,6 +35,9 @@
                 <dt class="col-sm-3">Email</dt>
                 <dd class="col-sm-9">{{ $bank->email ?? '—' }}</dd>
 
+                <dt class="col-sm-3">Current Balance</dt>
+                <dd class="col-sm-9">{{ \App\Support\MoneyHelper::format($bank->balance) }}</dd>
+
                 <dt class="col-sm-3">Status</dt>
                 <dd class="col-sm-9">
                     @if($bank->is_active)
@@ -46,4 +49,12 @@
             </dl>
         </div>
     </div>
+
+    <h5 class="mt-4 mb-3">Transactions</h5>
+    @include('admin.partials.recent-transactions', [
+        'transactions' => $transactions,
+        'hasMoreTransactions' => $hasMoreTransactions,
+        'showMoreUrl' => route('admin.bank-flow.transactions.index', ['bank_id' => $bank->id]),
+        'showReference' => true,
+    ])
 @endsection

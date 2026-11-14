@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Admission extends Model
 {
@@ -32,10 +33,14 @@ class Admission extends Model
 
     protected $fillable = [
         'session_id',
+        'session_start_date',
+        'session_end_date',
+        'is_extended_membership',
         'session_membership_id',
         'session_age_id',
         'cash_transaction_id',
         'full_name',
+        'physically_disabled',
         'gender',
         'date_of_birth',
         'mobile_no',
@@ -58,13 +63,35 @@ class Admission extends Model
     protected function casts(): array
     {
         return [
+            'session_start_date' => 'date',
+            'session_end_date' => 'date',
+            'is_extended_membership' => 'boolean',
             'date_of_birth' => 'date',
+            'physically_disabled' => 'boolean',
             'is_wildcard' => 'boolean',
             'amount' => 'decimal:2',
             'is_document_complete' => 'boolean',
             'attendance_count' => 'integer',
             'admitted_by' => 'integer',
         ];
+    }
+
+    public static function asBoolean(mixed $value): bool
+    {
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    public static function latestDateOfBirth(): string
+    {
+        return now()->subYear()->toDateString();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public static function dateOfBirthRules(): array
+    {
+        return ['required', 'date', 'before_or_equal:'.self::latestDateOfBirth()];
     }
 
     public static function genders(): array
@@ -90,6 +117,11 @@ class Admission extends Model
     public function session(): BelongsTo
     {
         return $this->belongsTo(Session::class);
+    }
+
+    public function feeBreakdown(): HasOne
+    {
+        return $this->hasOne(FeeBreakdown::class);
     }
 
     public function membership(): BelongsTo
